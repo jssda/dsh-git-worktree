@@ -842,10 +842,6 @@ export const hostMessages = {
     "zh": "Preview 撤回后的 Local snapshot 与安全恢复结果不一致，需要保留现场确认",
     "en": "The Local snapshot after Preview rollback does not match the safe recovery result. The environment must be preserved for inspection."
   },
-  "theCommitMessageMustNotBeEmpty": {
-    "zh": "提交信息不能为空",
-    "en": "The commit message must not be empty."
-  },
   "localChangedBeforeFinalizingPreviewRetry": {
     "zh": "Local 在完成 Preview 前发生变化，请重试",
     "en": "Local changed before finalizing Preview. Retry."
@@ -1274,9 +1270,9 @@ export const hostMessages = {
     "zh": "只有 owner Isolated Session 可以提交验收",
     "en": "Only the owner Isolated Session can commit acceptance."
   },
-  "theCommitMessageMustContain1500Characters": {
-    "zh": "Commit Message 必须为 1–500 个字符",
-    "en": "The commit message must contain 1–500 characters."
+  "theCommitMessageMustBeNonemptyAndContainNoNul": {
+    "zh": "Commit Message 不能为空或包含 NUL 字符",
+    "en": "The commit message must not be empty or contain NUL characters."
   },
   "applyingToLocalCausedConflicts": {
     "zh": "Local 应用发生冲突",

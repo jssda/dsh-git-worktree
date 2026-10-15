@@ -1,3 +1,4 @@
+import { isValidCommitMessage } from '../commit-message.js'
 import { hostMessage } from '../i18n/host.js'
 /**
  * Durable registry adapter: the session-checkout registry (version 2) as one
@@ -88,7 +89,7 @@ function isPreviousReview(value: unknown): boolean {
     && isBoundedText(value.reviewId, 200)
     && Number.isSafeInteger(value.iteration) && (value.iteration as number) >= 1
     && isBoundedText(value.summary, 1000)
-    && isBoundedText(value.suggestedCommitMessage, 500)
+    && isValidCommitMessage(value.suggestedCommitMessage)
     && Array.isArray(value.changedFiles) && value.changedFiles.length <= 50
     && value.changedFiles.every(isSafeRelativePath)
 }
@@ -106,7 +107,7 @@ function isCheckpoint(value: unknown): boolean {
     && isOid(value.commitOid)
     && isOid(value.parentOid)
     && isBoundedText(value.summary, 1000)
-    && isBoundedText(value.commitMessage, 500)
+    && isValidCommitMessage(value.commitMessage)
     && (value.validationStatus === 'passed' || value.validationStatus === 'failed' || value.validationStatus === 'partial' || value.validationStatus === 'not_run')
     && Array.isArray(value.changedFiles) && value.changedFiles.length <= 500
     && value.changedFiles.every(isSafeRelativePath)
@@ -238,7 +239,7 @@ function isJournal(value: unknown): boolean {
     && (value.checkpointSequence === undefined || (Number.isSafeInteger(value.checkpointSequence) && (value.checkpointSequence as number) >= 1))
     && (value.checkpointRequestId === undefined || (isBoundedText(value.checkpointRequestId, 200) && !/[\r\n]/u.test(value.checkpointRequestId)))
     && (value.checkpointRequestedRevision === undefined || (Number.isSafeInteger(value.checkpointRequestedRevision) && (value.checkpointRequestedRevision as number) >= 0))
-    && (value.checkpointMessage === undefined || isBoundedText(value.checkpointMessage, 500))
+    && (value.checkpointMessage === undefined || isValidCommitMessage(value.checkpointMessage))
     && (value.checkpointIndexTreeOid === undefined || isOid(value.checkpointIndexTreeOid))
     && (value.parentOid === undefined || isOid(value.parentOid))
     && (value.retention === undefined || value.retention === 'cleanup' || value.retention === 'retain_24h' || value.retention === 'retain_3d' || value.retention === 'retain_manual')
@@ -333,27 +334,6 @@ function isRegistry(value: unknown): value is ManagedCheckoutsRegistry {
     && Object.values(value.managedCheckouts).every(isManagedCheckout)
 }
 
-function repairOversizedPreviousReviewCommitMessage(value: unknown): ManagedCheckoutsRegistry | null {
-  if (!isRecord(value) || value.version !== 2 || !isRecord(value.managedCheckouts)) return null
-  let repaired = false
-  const managedCheckouts = Object.fromEntries(Object.entries(value.managedCheckouts).map(([checkoutId, checkout]) => {
-    if (!isRecord(checkout) || !isRecord(checkout.previousReview)) return [checkoutId, checkout]
-    const message = checkout.previousReview.suggestedCommitMessage
-    if (typeof message !== 'string' || message.length <= 500) return [checkoutId, checkout]
-    repaired = true
-    return [checkoutId, {
-      ...checkout,
-      previousReview: {
-        ...checkout.previousReview,
-        suggestedCommitMessage: message.slice(0, 500).replace(/[\uD800-\uDBFF]$/u, ''),
-      },
-    }]
-  }))
-  if (!repaired) return null
-  const candidate = { ...value, managedCheckouts }
-  return isRegistry(candidate) ? candidate : null
-}
-
 function migrateLegacyRegistry(value: unknown): ManagedCheckoutsRegistry | null {
   if (
     !isRecord(value)
@@ -418,11 +398,6 @@ export class AtomicJsonCheckoutRegistry implements SessionCheckoutRegistryPort {
   read(): ManagedCheckoutsRegistry {
     const value = readJsonFileSafe<unknown>(this.path)
     if (value && isRegistry(value)) return value
-    const repaired = repairOversizedPreviousReviewCommitMessage(value)
-    if (repaired) {
-      this.write(repaired)
-      return repaired
-    }
     const migrated = migrateLegacyRegistry(value)
     if (migrated) {
       this.write(migrated)

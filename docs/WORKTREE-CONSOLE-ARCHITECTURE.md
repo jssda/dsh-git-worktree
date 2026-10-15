@@ -123,7 +123,7 @@ Console 状态由 domain facts 单向投影，不创建第二套持久状态机�
 - rollback 的 `beforeWrite` 在最终 Local CAS 后、第一次写入前把 journal 推进到 `writing_local`；finalize 在 branch-ref CAS 与相邻 index replacement 周围保留精确 journal/backup。写后必须验证 HEAD/ref/index/tree/fingerprint；若无法证明精确完成，则持久化 `recovery_required`，不得仅凭 Commit HEAD 推断成功；
 - `preparePreviewRecoveryAnalysis` 与 `createPreviewRecoveryHandoff` 在执行前强制获取并 Host 复验新 proof。分析 continuation 明确禁止修改旧 Worktree、Local、refs/index/artifacts；handoff 从最新 Local HEAD 创建新的 managed Worktree，失败不得消费或改写旧 detached delivery、receipt、retained refs、Local 或旧 Worktree；
 - discard 必须带 checkout ID、expected revision 和显式 `confirmDirty`；active Preview 还必须带 `rollbackPreview: true`，且 Host 只在 rollback 成功后删除 Worktree；
-- finalize/finalizePreview 必须带 checkout ID、expected revision、expected review ID、1–500 字符用户确认 Commit Message 和 retention；Commit Message 不是授权材料，Host 必须重新做长度/空白校验并继续执行完整 review/CAS 校验；
+- finalize/finalizePreview 必须带 checkout ID、expected revision、expected review ID、非空且不含 NUL 的用户确认 Commit Message（保留完整多行正文，不设 500 字符上限） 和 retention；Commit Message 不是授权材料，Host 必须重新做空白/NUL 校验并继续执行完整 review/CAS 校验；
 - reviewDiff 绑定 expected revision + expected review ID，若 fingerprint/head 已变则返回 stale，不展示未审阅 bytes；该能力保留在高级控制面，不进入普通验收卡；
 - 所有 mutation response 返回新的 summary/revision，Client 不乐观伪造 durable 状态；Finalize 后 summary 可带 Delivery Proof，包括 Commit、Local branch/HEAD、changed files、validation evidence 和动态 `commitInLocalHistory`，但 proof 不构成后续写权限。
 

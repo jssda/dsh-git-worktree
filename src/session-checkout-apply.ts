@@ -1,3 +1,4 @@
+import { isValidCommitMessage } from './commit-message.js'
 import { type ProjectSkillStore, trackedSkillPaths } from './adapters/project-skills.js'
 import { hostMessage } from './i18n/host.js'
 import { spawn } from 'node:child_process'
@@ -1078,7 +1079,7 @@ class DefaultSessionCheckoutApplyEngine implements SessionCheckoutApplyEngine {
 
   async checkpoint(input: CheckpointInput): Promise<CheckpointResult> {
     const commitMessage = input.commitMessage.trim()
-    if (!commitMessage || commitMessage.length > 500 || !OID_PATTERN.test(input.expectedHeadOid) || !input.expectedFingerprint.trim()) {
+    if (!isValidCommitMessage(commitMessage) || !OID_PATTERN.test(input.expectedHeadOid) || !input.expectedFingerprint.trim()) {
       return { status: 'error', error: { code: 'invalid_input', message: hostMessage('invalidCheckpointInput') } }
     }
 
@@ -1837,8 +1838,8 @@ class DefaultSessionCheckoutApplyEngine implements SessionCheckoutApplyEngine {
     beforeCommit?(commitOid: string): Promise<void>
   }): Promise<FinishResult> {
     const commitMessage = input.commitMessage.trim()
-    if (!commitMessage) {
-      return { status: 'error', error: { code: 'invalid_input', message: hostMessage('theCommitMessageMustNotBeEmpty') } }
+    if (!isValidCommitMessage(commitMessage)) {
+      return { status: 'error', error: { code: 'invalid_input', message: hostMessage('theCommitMessageMustBeNonemptyAndContainNoNul') } }
     }
 
     let tempRoot: string | null = null
@@ -2112,8 +2113,8 @@ class DefaultSessionCheckoutApplyEngine implements SessionCheckoutApplyEngine {
       return { status: 'error', error: { code: 'invalid_plan', message: hostMessage('theFinishPlanIsMissingAlreadyUsedOrModified') } }
     }
     const commitMessage = options.commitMessage.trim()
-    if (!commitMessage) {
-      return { status: 'error', error: { code: 'invalid_input', message: hostMessage('theCommitMessageMustNotBeEmpty') } }
+    if (!isValidCommitMessage(commitMessage)) {
+      return { status: 'error', error: { code: 'invalid_input', message: hostMessage('theCommitMessageMustBeNonemptyAndContainNoNul') } }
     }
     if (!stored.plan.localHeadRef?.startsWith('refs/heads/')) {
       return {

@@ -60,10 +60,6 @@ export const clientMessages = {
     "zh": "当前会话已切换，已停止准备独立工作目录。",
     "en": "The current session changed. Isolated working directory preparation stopped."
   },
-  "500": {
-    "zh": "/500",
-    "en": "/500"
-  },
   "the.cwd.of.new.harness.session.does.not": {
     "zh": "Harness 新建 Session {p0} 的 cwd 与 Host 记录不一致。",
     "en": "The cwd of new Harness Session {p0} does not match the Host record."

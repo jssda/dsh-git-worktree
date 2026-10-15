@@ -1,3 +1,4 @@
+import { isValidCommitMessage } from '../commit-message.js'
 import { hostMessage } from '../i18n/host.js'
 import { randomUUID } from 'node:crypto'
 import { resolve } from 'node:path'
@@ -788,7 +789,7 @@ export function createWorktreeConsoleControlPlane(options: WorktreeConsoleContro
       const record = await authorize(request.sessionId, request.checkoutId)
       if (record.ownerSessionId !== request.sessionId) throw domainError('not_owner', hostMessage('onlyTheOwnerIsolatedSessionCanSaveACheckpoint447'))
       const commitMessage = request.commitMessage.trim()
-      if (!commitMessage || commitMessage.length > 500 || !safeRecoveryRequestId(request.requestId)) {
+      if (!isValidCommitMessage(commitMessage) || !safeRecoveryRequestId(request.requestId)) {
         throw domainError('invalid_input', hostMessage('theCheckpointCommitMessageOrRequestIdIsInvalid'))
       }
       const result = await options.module.operate({
@@ -981,7 +982,7 @@ export function createWorktreeConsoleControlPlane(options: WorktreeConsoleContro
         const review = readyReview(record)
         if (review.reviewId !== request.expectedReviewId) return failure('stale_target', hostMessage('theReviewIdentityHasChangedRefresh'))
         const commitMessage = request.commitMessage.trim()
-        if (!commitMessage || commitMessage.length > 500) return failure('invalid_input', hostMessage('theCommitMessageMustContain1500Characters'))
+        if (!isValidCommitMessage(commitMessage)) return failure('invalid_input', hostMessage('theCommitMessageMustBeNonemptyAndContainNoNul'))
         const result = await options.module.operate({
           sessionId: request.sessionId,
           expectedRevision: request.expectedRevision,
@@ -1025,7 +1026,7 @@ export function createWorktreeConsoleControlPlane(options: WorktreeConsoleContro
         const review = previewReview(record)
         if (review.reviewId !== request.expectedReviewId) return failure('stale_target', hostMessage('theReviewIdentityHasChangedRefresh'))
         const commitMessage = request.commitMessage.trim()
-        if (!commitMessage || commitMessage.length > 500) return failure('invalid_input', hostMessage('theCommitMessageMustContain1500Characters'))
+        if (!isValidCommitMessage(commitMessage)) return failure('invalid_input', hostMessage('theCommitMessageMustBeNonemptyAndContainNoNul'))
         const result = await options.module.operate({
           action: 'finalize_preview',
           sessionId: request.sessionId,

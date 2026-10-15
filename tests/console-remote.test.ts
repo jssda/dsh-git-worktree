@@ -137,7 +137,19 @@ describe('manual strict Worktree Console Remote contribution', () => {
     const finalize = WORKTREE_CONSOLE_DESCRIPTORS.find((descriptor) => descriptor.method === 'finalize')!
     const commitMessage = finalize.parameters.find(parameter => parameter.name === 'commitMessage')!
     expect(() => commitMessage.codec.mode === 'strict' && commitMessage.codec.schema.parse('   ')).toThrow()
-    expect(() => commitMessage.codec.mode === 'strict' && commitMessage.codec.schema.parse('x'.repeat(501))).toThrow()
+    expect(() => commitMessage.codec.mode === 'strict' && commitMessage.codec.schema.parse('feat: invalid\0message')).toThrow()
+  })
+
+  it('accepts complete multiline Commit Messages beyond 500 characters for every commit action', () => {
+    const message = `feat: 完整提交说明\n\n${'保留正文与 emoji 😀\n'.repeat(100)}`.trim()
+    for (const method of ['checkpoint', 'finalize', 'finalizePreview']) {
+      const descriptor = WORKTREE_CONSOLE_DESCRIPTORS.find(item => item.method === method)!
+      const codec = descriptor.parameters.find(parameter => parameter.name === 'commitMessage')!.codec
+      if (codec.mode !== 'strict') throw new Error('expected strict codec')
+      expect(codec.schema.parse(`  ${message}\n`)).toBe(message)
+      expect(() => codec.schema.parse(' \n ')).toThrow()
+      expect(() => codec.schema.parse('feat: bad\0message')).toThrow()
+    }
   })
 
   it('roundtrips path-free acceptance blocker and delivery proof through strict schemas', () => {

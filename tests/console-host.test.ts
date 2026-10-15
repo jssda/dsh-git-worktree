@@ -1,3 +1,4 @@
+import { longCommitMessage } from './support/commit-message.js'
 import { spawnSync } from 'node:child_process'
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -504,7 +505,7 @@ describe('Worktree Console Host control plane', () => {
 
     const result = await control.checkpoint({
       sessionId: 'target-session', checkoutId: 'checkout-1', expectedRevision: 7, expectedReviewId: 'review-1',
-      expectedGeneration: generation, requestId: `checkpoint:${generation}`, commitMessage: 'feat(checkpoint): save stage',
+      expectedGeneration: generation, requestId: `checkpoint:${generation}`, commitMessage: longCommitMessage,
     })
 
     expect(result).toMatchObject({
@@ -516,7 +517,7 @@ describe('Worktree Console Host control plane', () => {
     })
     expect(module.operate).toHaveBeenCalledWith({
       action: 'checkpoint', sessionId: 'target-session', expectedRevision: 7, expectedReviewId: 'review-1',
-      expectedGeneration: generation, requestId: `checkpoint:${generation}`, commitMessage: 'feat(checkpoint): save stage',
+      expectedGeneration: generation, requestId: `checkpoint:${generation}`, commitMessage: longCommitMessage,
     })
     expect(JSON.stringify(result)).not.toContain('refs/dsh')
   })
@@ -876,19 +877,19 @@ describe('Worktree Console Host control plane', () => {
     expect(inspected).toMatchObject({ ok: true, value: { target: { managedRoot: '/managed' } } })
   })
 
-  it('finalizes only the persisted review identity with the bounded user-confirmed commit message', async () => {
+  it('finalizes only the persisted review identity with the complete long user-confirmed commit message', async () => {
     const { module, control } = plane()
     vi.mocked(module.operate).mockResolvedValue({
       status: 'finished', target: local(), changedFiles: ['src/index.ts'], commitOid: B, cleanup: 'discarded',
     })
     const result = await control.finalize({
       sessionId: 'target-session', checkoutId: 'checkout-1', expectedRevision: 7,
-      expectedReviewId: 'review-1', commitMessage: 'feat(review): user confirmed', retention: 'cleanup',
+      expectedReviewId: 'review-1', commitMessage: longCommitMessage, retention: 'cleanup',
     })
     expect(result.ok).toBe(true)
     expect(module.operate).toHaveBeenCalledWith({
       sessionId: 'target-session', expectedRevision: 7, action: 'finish', expectedReviewId: 'review-1',
-      commitMessage: 'feat(review): user confirmed', retention: 'cleanup',
+      commitMessage: longCommitMessage, retention: 'cleanup',
     })
   })
 
@@ -918,9 +919,9 @@ describe('Worktree Console Host control plane', () => {
     })
   })
 
-  it('rejects an empty or oversized user Commit Message before any Local operation', async () => {
+  it('rejects an empty or NUL-containing user Commit Message before any Local operation', async () => {
     const { module, control } = plane()
-    for (const commitMessage of ['   ', 'x'.repeat(501)]) {
+    for (const commitMessage of ['   ', 'feat: bad\0message']) {
       const result = await control.finalize({
         sessionId: 'target-session', checkoutId: 'checkout-1', expectedRevision: 7,
         expectedReviewId: 'review-1', commitMessage, retention: 'cleanup',
@@ -928,6 +929,36 @@ describe('Worktree Console Host control plane', () => {
       expect(result).toMatchObject({ ok: false, error: { code: 'invalid_input' } })
     }
     expect(module.operate).not.toHaveBeenCalled()
+  })
+
+  it('accepts a complete long message for preview finalization and rejects invalid bodies without operating', async () => {
+    const record = readyRecord()
+    if (record.delivery.state !== 'ready_for_review') throw new Error('expected ready')
+    record.delivery = {
+      state: 'preview_active', review: record.delivery.review,
+      preview: {
+        previewId: 'preview-1', reviewId: 'review-1', iteration: 1, previewedAt: 1,
+        configuredBaseOid: A, effectiveBaseOid: A, baseStrategy: 'recorded_base',
+        localHeadOid: A, localHeadRef: 'refs/heads/main',
+        localFingerprintBefore: 'before', localFingerprintPreview: 'preview',
+        localWorkingTreeOid: A, localIndexTreeOid: A, previewWorkingTreeOid: B, isolatedSnapshotOid: B,
+        changedFiles: ['src/index.ts'], isolatedHeadOid: B, isolatedFingerprint: 'fingerprint-1',
+      },
+    }
+    const { module, control } = plane(record)
+    vi.mocked(module.operate).mockResolvedValue({
+      status: 'finished', target: local(), changedFiles: ['src/index.ts'], commitOid: B, cleanup: 'discarded',
+    })
+    const request = {
+      sessionId: 'target-session', checkoutId: 'checkout-1', expectedRevision: 7,
+      expectedReviewId: 'review-1', commitMessage: longCommitMessage, retention: 'cleanup' as const,
+    }
+    for (const commitMessage of [' \n ', 'feat: bad\0message']) {
+      expect(await control.finalizePreview({ ...request, commitMessage })).toMatchObject({ ok: false, error: { code: 'invalid_input' } })
+    }
+    expect(module.operate).not.toHaveBeenCalled()
+    expect(await control.finalizePreview(request)).toMatchObject({ ok: true })
+    expect(module.operate).toHaveBeenCalledWith(expect.objectContaining({ action: 'finalize_preview', commitMessage: longCommitMessage }))
   })
 
   it('rejects source-side Discard after the owner Session is live', async () => {

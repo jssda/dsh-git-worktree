@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { longCommitMessage } from './support/commit-message.js'
 import { WorktreeReviewStatus } from '../src/client/target-console/WorktreeReviewStatus.js'
 
 import { ClientI18nProvider } from '../src/client/i18n.js'
@@ -419,6 +420,66 @@ describe('Domi-style Worktree Review', () => {
       ...identity(8), commitMessage: 'feat(review): add Worktree Review UI', retention: 'cleanup',
     }))
     expect(fixture.adapter.finalize).not.toHaveBeenCalled()
+  })
+
+  test('超长建议值在 Review 更新、checkpoint 重开和提交时保持完整', async () => {
+    const fixture = createWorktreeConsoleAdapterFixture()
+    fixture.adapter.checkpoint = vi.fn(fixture.adapter.checkpoint)
+    const props = { adapter: fixture.adapter, identity: identity(), target: fixture.target }
+    const { rerender } = render(<WorktreeReviewPanel {...props} review={review({ suggestedCommitMessage: longCommitMessage })} />)
+    const open = () => {
+      fireEvent.click(screen.getByLabelText('更多交付操作'))
+      fireEvent.click(screen.getByRole('menuitem', { name: '保存阶段并继续' }))
+    }
+    open()
+    const input = screen.getByRole('textbox', { name: '阶段提交说明' }) as HTMLTextAreaElement
+    expect(input.value).toBe(longCommitMessage)
+    expect(input.hasAttribute('maxlength')).toBe(false)
+    fireEvent.change(input, { target: { value: '临时修改' } })
+    fireEvent.click(screen.getByRole('button', { name: '取消' }))
+    open()
+    expect((screen.getByRole('textbox', { name: '阶段提交说明' }) as HTMLTextAreaElement).value).toBe(longCommitMessage)
+    const updated = `${longCommitMessage}\n- 新的 Review 正文`
+    rerender(<WorktreeReviewPanel {...props} review={review({ suggestedCommitMessage: updated })} />)
+    open()
+    expect((screen.getByRole('textbox', { name: '阶段提交说明' }) as HTMLTextAreaElement).value).toBe(updated)
+    fireEvent.click(screen.getByRole('button', { name: '保存进度并继续' }))
+    await waitFor(() => expect(fixture.adapter.checkpoint).toHaveBeenCalledWith(expect.objectContaining({ commitMessage: updated })))
+  })
+
+  test.each(['finish', 'preview'] as const)('%s 允许完整的超长建议值及用户编辑值提交，同时拦截空白或 NUL', async mode => {
+    const { fixture, target } = mode === 'preview' ? previewTarget() : (() => {
+      const fixture = createWorktreeConsoleAdapterFixture()
+      return { fixture, target: fixture.target }
+    })()
+    fixture.adapter.finalize = vi.fn(fixture.adapter.finalize)
+    fixture.adapter.finalizePreview = vi.fn(fixture.adapter.finalizePreview)
+    const revision = mode === 'preview' ? 8 : 7
+    const props = { adapter: fixture.adapter, identity: identity(revision), target }
+    const { rerender } = render(<WorktreeReviewPanel {...props} review={review({ revision, suggestedCommitMessage: longCommitMessage })} />)
+    if (mode === 'preview') fireEvent.click(screen.getByRole('button', { name: '确认并保存' }))
+    else {
+      await waitFor(() => expect(screen.getByText('同步条件已确认')).toBeTruthy())
+      fireEvent.click(screen.getByLabelText('更多交付操作'))
+      fireEvent.click(screen.getByRole('menuitem', { name: '跳过预览并保存' }))
+    }
+    const input = screen.getByRole('textbox', { name: '提交说明' }) as HTMLTextAreaElement
+    const confirm = screen.getByRole('button', { name: '确认交付并清理' }) as HTMLButtonElement
+    expect(input.value).toBe(longCommitMessage)
+    expect(input.hasAttribute('maxlength')).toBe(false)
+    expect(confirm.disabled).toBe(false)
+    const updated = `${longCommitMessage}\n- 更新建议值`
+    rerender(<WorktreeReviewPanel {...props} review={review({ revision, suggestedCommitMessage: updated })} />)
+    expect(input.value).toBe(updated)
+    for (const value of [' \n ', 'feat: bad\0message']) {
+      fireEvent.change(input, { target: { value } })
+      expect(confirm.disabled).toBe(true)
+    }
+    const edited = `${updated}\n- 用户补充正文`
+    fireEvent.change(input, { target: { value: edited } })
+    fireEvent.click(confirm)
+    const submit = mode === 'preview' ? fixture.adapter.finalizePreview : fixture.adapter.finalize
+    await waitFor(() => expect(submit).toHaveBeenCalledWith(expect.objectContaining({ commitMessage: edited })))
   })
 
   test('Preview active 更多菜单支持撤回本次预览', async () => {

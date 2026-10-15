@@ -188,7 +188,7 @@ export interface ManagedWorktreeCheckpointRecord {
   changedFiles: string[]
 }
 
-/** Bounded context for the next cumulative review; never replaces the final diff as fact source. */
+/** Previous review context with bounded file paths; never replaces the final diff as fact source. */
 export interface ManagedWorktreePreviousReviewRecord {
   reviewId: string
   iteration: number

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { isValidCommitMessage } from '../commit-message.js'
 import {
   WORKTREE_CONSOLE_ERROR_CODES,
   WORKTREE_CONSOLE_TARGET_STATES,
@@ -20,7 +21,7 @@ const strict = <T extends z.core.$ZodLooseShape>(shape: T) => z.object(shape).st
 export const sessionIdSchema = z.string().min(1).max(200).refine(value => !/[\0\r\n]/u.test(value), 'unsafe session id')
 export const checkoutIdSchema = z.string().min(1).max(200).refine(value => !value.includes('..') && !/[\\/\0\r\n]/u.test(value), 'unsafe checkout id')
 export const reviewIdSchema = z.string().min(1).max(200).refine(value => !/[\0\r\n]/u.test(value), 'unsafe review id')
-export const commitMessageSchema = z.string().trim().min(1).max(500)
+export const commitMessageSchema = z.string().trim().refine(isValidCommitMessage, 'invalid commit message')
 export const revisionSchema = z.number().int().nonnegative()
 const gitOidSchema = z.string().regex(/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/iu)
 export const oidSchema = z.union([

@@ -1,3 +1,4 @@
+import { longCommitMessage } from './support/commit-message.js'
 import { afterEach, describe, expect, test } from 'vitest'
 import { chmod, lstat, mkdir, mkdtemp, readFile, readlink, rm, symlink, unlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -89,7 +90,7 @@ describe('SessionCheckoutApplyEngine', () => {
       isolatedPath: fixture.isolatedPath,
       expectedHeadOid: review.isolatedHeadOid,
       expectedFingerprint: review.isolatedFingerprint,
-      commitMessage: 'feat(checkpoint): save exact stage',
+      commitMessage: longCommitMessage,
       beforeCommit: value => { prepared = value },
     })
 
@@ -101,7 +102,7 @@ describe('SessionCheckoutApplyEngine', () => {
     if (result.status !== 'checkpointed') throw new Error('expected checkpointed')
     expect(prepared?.commitOid).toBe(result.commitOid)
     expect(await runGit(fixture.isolatedPath, ['rev-parse', 'HEAD'])).toBe(result.commitOid)
-    expect(await runGit(fixture.isolatedPath, ['show', '-s', '--format=%s', 'HEAD'])).toBe('feat(checkpoint): save exact stage')
+    expect(await runGit(fixture.isolatedPath, ['show', '-s', '--format=%B', 'HEAD'])).toBe(longCommitMessage)
     expect(await runGit(fixture.isolatedPath, ['status', '--porcelain=v1', '-uall'])).toBe('')
     expect(await readFile(join(fixture.isolatedPath, 'tracked.txt'), 'utf8')).toBe('final unstaged version\n')
     expect(await runGit(fixture.localPath, ['rev-parse', 'HEAD'])).toBe(localHeadBefore)
@@ -660,13 +661,13 @@ describe('SessionCheckoutApplyEngine', () => {
     const result = await createSessionCheckoutApplyEngine().finalize({
       localPath: fixture.localPath,
       receipt: preview.receipt,
-      commitMessage: 'fix: accepted preview',
+      commitMessage: longCommitMessage,
     })
 
     expect(result.status).toBe('finished')
     if (result.status !== 'finished') throw new Error(`预期 finished，实际为 ${result.status}`)
     expect(result.commitOid).toBe(await runGit(fixture.localPath, ['rev-parse', 'HEAD']))
-    expect(await runGit(fixture.localPath, ['show', '-s', '--format=%s', 'HEAD'])).toBe('fix: accepted preview')
+    expect(await runGit(fixture.localPath, ['show', '-s', '--format=%B', 'HEAD'])).toBe(longCommitMessage)
     expect(await runGit(fixture.localPath, ['show', '--format=', '--name-only', 'HEAD'])).toBe('tracked.txt')
     expect(await runGit(fixture.localPath, ['diff', '--cached', '--name-only'])).toBe('local-staged.txt')
     expect(await runGit(fixture.localPath, ['diff', '--name-only'])).toBe('merge.txt')

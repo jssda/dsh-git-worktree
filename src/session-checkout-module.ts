@@ -1,3 +1,4 @@
+import { isValidCommitMessage } from './commit-message.js'
 import { hostMessages, hostPersistedCleanupMessage } from './i18n/host-messages.js'
 import { hostMessage } from './i18n/host.js'
 import { createHash } from 'node:crypto'
@@ -215,14 +216,11 @@ export function createSessionCheckoutModule(
   }
 
   function projectPreviousReview(review: ManagedWorktreeReviewRecord): ManagedWorktreePreviousReviewRecord {
-    const suggestedCommitMessage = review.suggestedCommitMessage.length <= 500
-      ? review.suggestedCommitMessage
-      : review.suggestedCommitMessage.slice(0, 500).replace(/[\uD800-\uDBFF]$/u, '')
     return {
       reviewId: review.reviewId,
       iteration: review.iteration,
       summary: review.summary,
-      suggestedCommitMessage,
+      suggestedCommitMessage: review.suggestedCommitMessage,
       changedFiles: review.changedFiles.slice(0, 50),
     }
   }
@@ -1277,7 +1275,7 @@ export function createSessionCheckoutModule(
     }
     const summary = input.summary.trim()
     const suggestedCommitMessage = input.suggestedCommitMessage.trim()
-    if (!summary || !suggestedCommitMessage || input.tests.length > 20) {
+    if (!summary || !isValidCommitMessage(suggestedCommitMessage) || input.tests.length > 20) {
       throw new SessionCheckoutError('invalid_input', hostMessage('theReviewSummaryCommitMessageOrValidationItemsAre'))
     }
     const record = dependencies.registry.read().managedCheckouts[binding.target.checkoutId]
@@ -1345,8 +1343,7 @@ export function createSessionCheckoutModule(
     }
     const commitMessage = input.commitMessage.trim()
     if (
-      !commitMessage
-      || commitMessage.length > 500
+      !isValidCommitMessage(commitMessage)
       || !input.expectedReviewId.trim()
       || !/^[0-9a-f]{64}$/u.test(input.expectedGeneration)
       || !input.requestId.trim()
@@ -2703,6 +2700,9 @@ export function createSessionCheckoutModule(
     if (binding.ownerSessionId !== input.sessionId || binding.target.kind !== 'isolated') {
       return operationError('not_owner', hostMessage('onlyTheOwnerIsolatedSessionCanFinalizeTheAcceptance'))
     }
+    if (!isValidCommitMessage(input.commitMessage)) {
+      return operationError('invalid_input', hostMessage('theCommitMessageMustBeNonemptyAndContainNoNul'))
+    }
     const record = dependencies.registry.read().managedCheckouts[binding.target.checkoutId]
     if (!record) return operationError('checkout_missing', hostMessage('theIsolatedCheckoutRecordDoesNotExist'))
     if (record.revision !== input.expectedRevision) {
@@ -2875,6 +2875,9 @@ export function createSessionCheckoutModule(
       return operationError('operation_not_allowed', hostMessage('localCheckoutDoesNotSupportFinish'))
     }
 
+    if (!isValidCommitMessage(input.commitMessage)) {
+      return operationError('invalid_input', hostMessage('theCommitMessageMustBeNonemptyAndContainNoNul'))
+    }
     let record = dependencies.registry.read().managedCheckouts[binding.target.checkoutId]
     if (!record) return operationError('checkout_missing', hostMessage('theIsolatedCheckoutRecordDoesNotExist'))
     if (record.revision !== input.expectedRevision) {
