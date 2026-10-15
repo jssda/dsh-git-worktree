@@ -940,9 +940,10 @@ export function ReviewActions({
 
   return (
     <>
-    {renderStatus?.(submitting)}
     <section className="dsh-wt-review-actions" aria-label={t("review.actions")}>
       {!live ? <p className="dsh-wt-status">{unavailableMessage}</p> : null}
+      <div className={renderStatus ? 'dsh-wt-review-action-head' : undefined}>
+      {renderStatus?.(submitting)}
       {terminal ? (
         <p className="dsh-wt-status">
           {target.state === 'retained'
@@ -951,7 +952,7 @@ export function ReviewActions({
         </p>
       ) : (
         <div className="dsh-wt-actions">
-          {primary}
+          {ready && preflightSnapshot.status === 'success' && preflightSnapshot.preflight.status === 'conflict' ? null : primary}
           <details ref={moreMenuRef} className="dsh-wt-more-menu">
             <summary className="dsh-wt-more-trigger" aria-label={t("more.delivery.actions")}><ReviewIcon name="more" /></summary>
             <div className="dsh-wt-more-content" role="menu">
@@ -1011,6 +1012,7 @@ export function ReviewActions({
           </details>
         </div>
       )}
+      </div>
 
       <Modal
         open={checkpointOpen}

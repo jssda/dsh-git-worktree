@@ -262,7 +262,7 @@ describe('Domi-style Worktree Review', () => {
     render(<WorktreeReviewPanel review={review()} adapter={fixture.adapter} services={services} identity={identity()} target={fixture.target} />)
 
     await waitFor(() => expect(screen.getByText('发现 1 个冲突文件')).toBeTruthy())
-    expect(screen.getByText('x.ts')).toBeTruthy()
+    expect(screen.queryByText('x.ts')).toBeNull()
     expect(fixture.adapter.resumeRevision).not.toHaveBeenCalled()
     expect(services.sessions.binding('target-session')?.session.prompt).not.toHaveBeenCalled()
 

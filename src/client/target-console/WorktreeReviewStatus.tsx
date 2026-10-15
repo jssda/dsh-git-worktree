@@ -135,7 +135,6 @@ export function WorktreeReviewStatus({ session, adapter, services }: WorktreeRev
     <section className="dsh-wt-review-dock" aria-label={t("worktree.ready.for.review")} data-review-state={target.state}>
       <ReviewIcon name={target.state === 'preview_detached' || target.state === 'recovery_required' ? 'warning' : 'branch'} />
       {error ? <span className="dsh-wt-error">{error}</span> : null}
-      <button type="button" className="dsh-wt-details-trigger" onClick={() => setDetailsOpen(true)}><ReviewIcon name="list" />{t("detail.view")}</button>
       <ReviewDetailsModal open={detailsOpen} onClose={() => setDetailsOpen(false)} target={target} preflight={detailPreflight.status === 'success' ? detailPreflight.preflight : undefined} />
       <ReviewActions
         review={review}
@@ -147,6 +146,7 @@ export function WorktreeReviewStatus({ session, adapter, services }: WorktreeRev
         unavailableMessage={t("live.worktree.console.is.disconnected")}
         focusReview={() => setDetailsOpen(true)}
         renderStatus={operation => (
+          <>
           <span className="dsh-wt-review-dock-copy" role="status" aria-live="polite" aria-atomic="true">
             <strong title={review.summary}>{operation === 'preview' ? t('preparing.local.preview')
               : operation === 'rollback' ? t('withdrawing.local.preview')
@@ -157,6 +157,8 @@ export function WorktreeReviewStatus({ session, adapter, services }: WorktreeRev
             <span className="dsh-wt-dock-evidence"><ReviewIcon name={validationIcon(review.validationStatus)} />{t('count.files', { count: review.changedFiles.length })} · {validationText(review.validationStatus, t)}</span>
             {target.state === 'preview_detached' ? <span>{detail}</span> : null}
           </span>
+          <button type="button" className="dsh-wt-details-trigger" onClick={() => setDetailsOpen(true)}><ReviewIcon name="list" />{t("detail.view")}</button>
+          </>
         )}
         isActive={() => mounted.current && currentSessionId.current === sessionId && sessionGeneration.current === actionGeneration}
         onStale={() => { void refresh() }}

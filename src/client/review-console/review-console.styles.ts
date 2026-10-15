@@ -61,7 +61,6 @@ export const REVIEW_CONSOLE_STYLES = String.raw`
 .dsh-wt-retention-select { display:grid; gap:5px; padding:9px; border-radius:8px; background:var(--wt-panel); font-size:12px; }
 .dsh-wt-retention-select select { min-height:32px; border:1px solid var(--wt-line); border-radius:7px; padding:0 8px; background:Canvas; color:inherit; }
 .dsh-wt-preflight { display:grid; gap:7px; margin-top:7px; padding:8px 9px; border-radius:8px; background:var(--wt-panel); color:var(--wt-muted); font-size:12px; }
-.dsh-wt-preflight[data-preflight="conflict"],
 .dsh-wt-preflight[data-preflight="blocked"],
 .dsh-wt-preflight[data-preflight="error"] { color:var(--wt-amber); }
 .dsh-wt-preflight-head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
@@ -74,7 +73,15 @@ export const REVIEW_CONSOLE_STYLES = String.raw`
 .dsh-wt-delivery-proof dt { color:var(--wt-muted); }
 .dsh-wt-preflight-facts dd,
 .dsh-wt-delivery-proof dd { min-width:0; margin:0; overflow-wrap:anywhere; }
-.dsh-wt-conflict-list { display:grid; gap:3px; max-height:116px; margin:0; padding-left:18px; overflow:auto; }
+.dsh-wt-preflight.dsh-wt-conflict { display:flex; align-items:center; flex-wrap:wrap; color:inherit; min-width:0; padding:8px 10px; gap:8px 12px; border:1px solid color-mix(in srgb, var(--wt-amber) 22%, transparent); background:color-mix(in srgb, var(--wt-amber) 5%, transparent); }
+.dsh-wt-conflict-heading { display:flex; align-items:center; flex:1 1 auto; gap:8px; min-width:0; }
+.dsh-wt-conflict-heading > div { display:flex; align-items:center; flex-wrap:wrap; gap:2px 10px; min-width:0; }
+.dsh-wt-conflict-heading > .dsh-wt-icon,
+.dsh-wt-conflict-heading strong { color:var(--wt-amber); }
+.dsh-wt-conflict-heading strong { line-height:1.5; overflow-wrap:anywhere; }
+.dsh-wt-conflict-heading p { margin:0; color:var(--wt-muted); line-height:1.5; }
+.dsh-wt-conflict-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:8px; margin-left:auto; color:var(--wt-ink); }
+.dsh-wt-conflict-actions .dsh-wt-button { display:inline-flex; align-items:center; gap:6px; max-width:100%; }
 .dsh-wt-recovery-actions { display:flex; flex-wrap:wrap; gap:6px; }
 .dsh-wt-inline-action { border:0; padding:0; background:transparent; color:inherit; font:inherit; text-decoration:underline; cursor:pointer; }
 .dsh-wt-inline-action:disabled { opacity:.5; cursor:not-allowed; }
@@ -84,18 +91,21 @@ export const REVIEW_CONSOLE_STYLES = String.raw`
 .dsh-wt-delivery-proof-compact { display:block; margin:1px 0 0; padding:0; border:0; background:transparent; color:var(--wt-muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .dsh-wt-action-status { min-height:1.35em; margin-top:7px; color:var(--wt-muted); font-size:12px; }
 .dsh-wt-review-dock { box-sizing:border-box; display:flex; flex:none; align-items:center; gap:9px; width:calc(100% - 2 * var(--dsh-composer-side-clearance, 16px) - 2 * var(--dsh-composer-dock-inset, 0px)); max-width:calc(var(--dsh-composer-card-max-width, 780px) - 2 * var(--dsh-composer-dock-inset, 0px)); margin:0 auto 8px; padding:7px 9px; border:1px solid color-mix(in srgb, #3275db 22%, transparent); border-radius:9px; background:color-mix(in srgb, #3275db 6%, transparent); color:var(--wt-ink); font-size:12px; }
-.dsh-wt-review-dock > .dsh-wt-icon { order:-2; }
-.dsh-wt-review-dock-copy { order:-1; order:-1; display:grid; min-width:0; flex:1; gap:1px; }
+.dsh-wt-review-dock > .dsh-wt-icon { order:-2; align-self:flex-start; margin-top:6px; }
+.dsh-wt-review-dock-copy { display:grid; min-width:0; flex:1; gap:1px; }
 .dsh-wt-review-dock-copy strong { font-weight:500; overflow-wrap:anywhere; }
 .dsh-wt-review-dock-copy span { color:var(--wt-muted); font-size:12px; }
-.dsh-wt-review-dock .dsh-wt-review-actions { min-width:0; max-width:100%; padding:0; }
+.dsh-wt-review-dock .dsh-wt-review-actions { flex:1; min-width:0; max-width:100%; padding:0; }
+.dsh-wt-review-action-head { display:flex; align-items:center; flex-wrap:wrap; gap:6px 10px; min-width:0; }
+.dsh-wt-review-action-head > .dsh-wt-review-dock-copy { flex:1 1 180px; }
+.dsh-wt-review-action-head > .dsh-wt-actions { flex:0 0 auto; margin-left:auto; }
 .dsh-wt-action-status:empty { min-height:0; margin-top:0; }
 .dsh-wt-action-status:empty { min-height:0; margin-top:0; }
 .dsh-wt-review-dock .dsh-wt-action-status:empty { display:none; }
 .dsh-wt-review-evidence-status { margin:0 14px 10px 42px; color:var(--wt-muted); font-size:12px; }
 .dsh-wt-review-dock .dsh-wt-actions { justify-content:flex-end; }
 .dsh-wt-review-dock .dsh-wt-preflight-facts { display:none; }
-.dsh-wt-review-dock .dsh-wt-preflight { margin:0; padding:4px 6px; }
+.dsh-wt-review-dock .dsh-wt-preflight { margin:8px 0 0; padding:8px 10px; }
 .dsh-wt-review-dock .dsh-wt-preflight[data-preflight="loading"],
 .dsh-wt-review-dock .dsh-wt-preflight[data-preflight="ready"],
 .dsh-wt-review-dock .dsh-wt-preflight[data-preflight="local_advanced"],
@@ -110,16 +120,13 @@ export const REVIEW_CONSOLE_STYLES = String.raw`
   .dsh-wt-review-validation-details,
   .dsh-wt-review-actions { margin-left:0; padding-left:14px; }
   .dsh-wt-review-dock { flex-wrap:wrap; width:calc(100% - 2 * var(--dsh-composer-side-clearance, 12px) - 2 * var(--dsh-composer-dock-inset, 0px)); }
-  .dsh-wt-review-dock > .dsh-wt-icon { order:-2; }
-.dsh-wt-review-dock-copy { order:-1; order:-1; flex-basis:calc(100% - 28px); }
-
-  .dsh-wt-review-dock .dsh-wt-review-actions { margin-left:auto; }
+  .dsh-wt-review-dock > .dsh-wt-review-dock-copy { flex-basis:calc(100% - 28px); }
 }
 
 .dsh-wt-icon { display:inline-flex; width:18px; height:18px; flex:0 0 18px; vertical-align:middle; }
 .dsh-wt-review-dock { background:var(--dsw-alias-bg-layer-2, #fff); border-color:var(--wt-line); padding:10px 12px; gap:10px; }
 .dsh-wt-review-dock-copy strong { font-size:13px; font-weight:550; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.dsh-wt-review-dock-copy .dsh-wt-dock-evidence { display:flex; align-items:center; gap:5px; }
+.dsh-wt-review-dock-copy .dsh-wt-dock-evidence { display:flex; align-items:center; flex-wrap:wrap; gap:5px; }
 .dsh-wt-dock-evidence .dsh-wt-icon { width:14px; height:14px; flex-basis:14px; }
 .dsh-wt-details-trigger { display:inline-flex; align-items:center; gap:5px; flex-shrink:0; padding:6px; border:0; background:transparent; color:inherit; font:inherit; cursor:pointer; border-radius:6px; }
 .dsh-wt-details-trigger:hover { background:var(--wt-panel); }

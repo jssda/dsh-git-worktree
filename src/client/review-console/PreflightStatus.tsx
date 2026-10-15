@@ -51,6 +51,28 @@ export function PreflightStatus({
   }
 
   const preflight = snapshot.preflight
+  if (preflight.status === 'conflict') {
+    return (
+      <div className="dsh-wt-preflight dsh-wt-conflict" data-preflight="conflict">
+        <div className="dsh-wt-conflict-heading">
+          <ReviewIcon name="warning" />
+          <div>
+            <strong>{statusLabel(preflight, t)}</strong>
+            <p>{t("read.only.check.local.unchanged")}</p>
+          </div>
+        </div>
+        <div className="dsh-wt-conflict-actions">
+          <button type="button" className="dsh-wt-button" disabled={busy} onClick={onRefresh}>
+            <ReviewIcon name="refresh" />{t("check.again")}
+          </button>
+          <button type="button" className="dsh-wt-button dsh-wt-primary" disabled={busy || !target?.capabilities.resumeRevision} onClick={() => onRecovery(preflight)}>
+            <ReviewIcon name="warning" />{t("ask.agent.to.resolve.conflicts")}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   const blocked = preflight.status === 'blocked'
   const staleIsolated = blocked && preflight.reason === 'stale_isolated' && preflight.reviewId !== null
   const holder = blocked && preflight.reason === 'project_acceptance_busy'
@@ -70,23 +92,15 @@ export function PreflightStatus({
           <div><dt>{t("changes")}</dt><dd>{t("count.files", { count: preflight.changedFiles.length })}</dd></div>
         </dl>
       ) : null}
-      {!compact && preflight.status === 'conflict' && preflight.conflictingFiles.length > 0 ? (
-        <ul className="dsh-wt-conflict-list" aria-label={t("conflicting.files")}>
-          {preflight.conflictingFiles.map(path => <li key={path}><code>{path}</code></li>)}
-        </ul>
-      ) : null}
       {holder ? <p>{t("holding.task")}{holder.checkoutId.slice(0, 8)} {t("session")} {holder.ownerSessionId.slice(0, 8)} · {{
         preview_active: t('previewing'), preview_detached: t('awaiting.recovery'),
         finalized: t('completed'), retained: t('retained'), working: t('in.progress'),
         ready_for_review: t('ready.for.review'), delivered: t('delivered'),
       }[holder.state]}</p> : null}
-      {preflight.status === 'conflict' || blocked ? (
+      {blocked ? (
         <div className="dsh-wt-recovery-actions">
           <button type="button" className="dsh-wt-inline-action" disabled={busy} onClick={onRefresh}><ReviewIcon name="refresh" />{t("check.again")}</button>
-          {preflight.status === 'conflict' ? (
-            <button type="button" className="dsh-wt-inline-action" disabled={busy || !target?.capabilities.resumeRevision} onClick={() => onRecovery(preflight)}>
-              <ReviewIcon name="warning" />{t("ask.agent.to.resolve.conflicts")} </button>
-          ) : staleIsolated ? (
+          {staleIsolated ? (
             <button type="button" className="dsh-wt-inline-action" disabled={busy} onClick={() => onRecovery(preflight)}>
               <ReviewIcon name="refresh" />{t("regenerate.review")} </button>
           ) : null}
