@@ -40,9 +40,10 @@ interface Guard {
 interface WorkspaceNavigation {
   archiveSession(id: string, options?: { stopActivity: boolean }): Promise<void>
   unarchiveSession(id: string): Promise<void>
-  forkSession(id: string): Promise<unknown>
+  forkSession(id: string, onCreated?: (id: string) => void, options?: { allowMigration: boolean }): Promise<unknown>
   startSession(id: string): void
   openWorkspace(id: string): Promise<void>
+  openWorkspaceSession(id: string): Promise<void>
 }
 interface ActionInjection {
   renameSession?: (id: string, title: string) => Promise<void>
@@ -71,7 +72,7 @@ describe.each(variants)('$name official Session actions', variant => {
         }
       },
       register(descriptor: typeof descriptors[number]) { descriptors.push(descriptor); return () => {} },
-      provideRoot() {}, entries: () => [], subscribe: () => () => {},
+      provideRoot() {}, registerFactory: () => () => {}, entries: () => [], subscribe: () => () => {},
     } as never)
     ctx.provide('sessions', {
       list: source({ ids: [], byId: {}, phase: 'loading' }),
@@ -106,7 +107,7 @@ describe.each(variants)('$name official Session actions', variant => {
         ? descriptor.name === 'sidebar.workspaces'
         : descriptor.id === 'workspace.session-rename')!
       const renameSession = renameDescriptor.inject!().renameSession!
-      const openWorkspace = vi.spyOn(navigation, 'openWorkspace').mockResolvedValue(undefined)
+      const openWorkspace = vi.spyOn(navigation, variant.name === 'modern' ? 'openWorkspaceSession' : 'openWorkspace').mockResolvedValue(undefined)
       for (const ready of [false, true]) {
         guard.ready = ready
         guard.sessionIds = new Set(['owner'])
@@ -119,7 +120,7 @@ describe.each(variants)('$name official Session actions', variant => {
         navigation.startSession('managed-workspace')
         expect(openWorkspace).not.toHaveBeenCalled()
         navigation.startSession('local-workspace')
-        if (ready) expect(openWorkspace).toHaveBeenCalledWith('local-workspace')
+        if (ready) expect(openWorkspace.mock.calls[0]?.[0]).toBe('local-workspace')
         else expect(openWorkspace).not.toHaveBeenCalled()
       }
       expect(rename.mock.calls).toEqual([['官方新标题'], ['官方新标题']])
@@ -128,6 +129,12 @@ describe.each(variants)('$name official Session actions', variant => {
       expect(unarchive.mock.calls).toEqual([['owner'], ['owner']])
       expect(fork).toHaveBeenCalledTimes(1)
       expect(fork).toHaveBeenCalledWith({ sessionId: 'ordinary', increaseTitle: true })
+      if (variant.name === 'modern') {
+        const onCreated = vi.fn()
+        await expect(navigation.forkSession('ordinary', onCreated, { allowMigration: false })).rejects.toBe(forkFailure)
+        expect(fork).toHaveBeenLastCalledWith({ sessionId: 'ordinary', increaseTitle: true, onCreated, allowMigration: false })
+        expect(descriptors.some(descriptor => descriptor.id === 'session-id')).toBe(true)
+      }
       if (variant.name !== 'alpha') {
         const confirm = descriptors.find(descriptor => descriptor.id === 'workspace.session-archive')!
         await confirm.inject!().stopAndArchiveSession!('owner')

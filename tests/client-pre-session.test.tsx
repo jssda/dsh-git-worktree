@@ -139,6 +139,20 @@ function successFixture() {
 afterEach(() => cleanup())
 
 describe('Pre-session Worktree preparation', () => {
+  test.each([undefined, 'selected-preset'])('uses Host default only when no source agent preset is recorded (%s)', async preset => {
+    const fixture = successFixture()
+    const original = fixture.services.sessions.list.getSnapshot
+    fixture.services.sessions.list.getSnapshot = () => {
+      const snapshot = original()
+      return { ...snapshot, byId: { ...snapshot.byId, 'source-session': { ...snapshot.byId['source-session'], projectionValues: { agentPreset: preset } } } }
+    }
+    const controller = createPreSessionWorktreeController(fixture.adapter, fixture.services as PreSessionWorktreeServices)
+    await controller.prepare({ sessionId: 'source-session', input: { draft: 'preserve choice and input', imageIds: ['attachment-1'], occurrences: [], phase: 'plain' }, inputActions: fixture.sourceActions })
+    expect(fixture.services.sessions.create).toHaveBeenCalledWith({ workspaceId: 'workspace-target', sessionId: 'target-session', ...(preset === undefined ? {} : { agentPreset: preset }) })
+    expect(fixture.targetInput.setDraft).toHaveBeenCalledWith('preserve choice and input')
+    expect(fixture.targetInput.addImages).toHaveBeenCalledWith(['attachment-1'])
+  })
+
   test('retains the catalogued target through draft handoff on a Host that does not bind on create', async () => {
     const fixture = successFixture()
     const targetCtx = { id: 'retained-target-context' }

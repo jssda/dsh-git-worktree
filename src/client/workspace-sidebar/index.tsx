@@ -14,7 +14,7 @@ import { projectManagedWorkspaceSidebar } from './model.js'
 const EMPTY_TOPOLOGY: WorktreeSidebarTopologyResponse = { projects: [] }
 // These official actions do not create another Session or change its Workspace
 // ownership. Keep their native menus, overlays and injected callbacks intact.
-const OWNER_SAFE_SESSION_ACTIONS = new Set(['pin', 'rename', 'archive'])
+const OWNER_SAFE_SESSION_ACTIONS = new Set(['pin', 'rename', 'archive', 'session-id'])
 
 /** Ephemeral presentation metadata consumed only by the gated official Browser derivative. */
 export interface ManagedWorktreeSessionDecoration {

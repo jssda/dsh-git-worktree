@@ -1,0 +1,119 @@
+{
+  "status": "pass",
+  "scope": "Unreleased source compatibility validation, not browser or full runtime acceptance",
+  "pluginVersion": "0.10.1",
+  "hostVersion": "0.2.1-rc.2",
+  "environment": {
+    "platform": "darwin",
+    "arch": "arm64",
+    "node": "24.21.0",
+    "npm": "11.19.0",
+    "installationDirectory": ".compat-validation/project",
+    "cacheDirectory": ".compat-validation/npm-cache"
+  },
+  "versions": {
+    "@deepseek-ai/cordis": "4.0.5",
+    "@deepseek-ai/cordis-plugin-loader": "1.0.6",
+    "@deepseek-ai/cordis-plugin-include": "1.0.10",
+    "@deepseek-ai/schemastery": "3.18.5",
+    "@deepseek-ai/dsh-agent": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-ui-workspace": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-locale": "0.2.1-rc.2",
+    "typescript": "5.9.3",
+    "vitest": "2.1.9",
+    "tsdown": "0.17.2"
+  },
+  "checks": [
+    {
+      "name": "isolated-install",
+      "command": "npm install --ignore-scripts --bin-links=false --install-strategy=hoisted --no-audit --no-fund --cache ../npm-cache",
+      "exitCode": 0
+    },
+    {
+      "name": "lifecycle-before-fix",
+      "command": "node node_modules/vitest/vitest.mjs run tests/workspace-provider-lifecycle.test.ts",
+      "exitCode": 1,
+      "expectedFailure": true,
+      "summary": { "filesFailed": 1, "testsTotal": 22, "testsPassed": 19, "testsFailed": 2, "suiteErrors": 1 },
+      "detail": "Reproduced live-disable empty graph, failed-activation dual graph, and PrettyFormatPluginError from formatting the retained official fiber in the slow-disable assertion."
+    },
+    {
+      "name": "lifecycle-after-production-fix-before-fixture-correction",
+      "command": "node node_modules/vitest/vitest.mjs run tests/workspace-provider-lifecycle.test.ts",
+      "exitCode": 1,
+      "expectedFailure": true,
+      "summary": { "filesFailed": 1, "testsTotal": 22, "testsPassed": 21, "suiteErrors": 1 },
+      "detail": "Both original graph failures fixed; retained-fiber assertion still caused PrettyFormatPluginError."
+    },
+    {
+      "name": "concurrent-generation-fixture-draft",
+      "command": "node node_modules/vitest/vitest.mjs run tests/workspace-provider-lifecycle.test.ts",
+      "exitCode": 1,
+      "expectedFailure": true,
+      "summary": { "testsPassed": 23, "testsFailed": 1, "testsTotal": 24 },
+      "detail": "New fixture initially used direct fiber.dispose on an enabled entry, which Loader intentionally persists as disabled. Corrected to the actual disable/re-enable entry.update path, without changing production behavior."
+    },
+    {
+      "name": "concurrent-generation-fixture-diagnostic",
+      "command": "node node_modules/vitest/vitest.mjs run tests/workspace-provider-lifecycle.test.ts -t 'old generation'",
+      "exitCode": 1,
+      "expectedFailure": true,
+      "detail": "Targeted diagnostic confirmed current uid and marker survived; only options.disabled was true from direct disposal. Other 23 tests excluded by the diagnostic filter, not skipped in final validation."
+    },
+    {
+      "name": "lifecycle-final",
+      "command": "node node_modules/vitest/vitest.mjs run tests/workspace-provider-lifecycle.test.ts",
+      "exitCode": 0,
+      "summary": { "filesPassed": 1, "testsPassed": 24, "testsFailed": 0, "testsSkipped": 0 }
+    },
+    {
+      "name": "typecheck",
+      "command": "node node_modules/typescript/bin/tsc --noEmit",
+      "exitCode": 0
+    },
+    {
+      "name": "build",
+      "command": "node scripts/clean-lib.mjs && node node_modules/typescript/bin/tsc && node node_modules/tsdown/dist/run.mjs",
+      "exitCode": 0
+    },
+    {
+      "name": "test",
+      "command": "node node_modules/vitest/vitest.mjs run",
+      "exitCode": 0,
+      "summary": { "filesPassed": 43, "filesFailed": 0, "testsTotal": 608, "testsPassed": 607, "testsFailed": 0, "testsSkipped": 1 }
+    },
+    {
+      "name": "check-sidebar-version",
+      "command": "node scripts/check-workspace-sidebar-version.mjs",
+      "exitCode": 0
+    },
+    {
+      "name": "check-publish",
+      "command": "node scripts/check-publish.mjs",
+      "exitCode": 0,
+      "detail": "NOTICE/LICENSE present; 13 singleton packages, 12 export targets, 23 strict Remote methods, browser ModuleLoader and lazy directory-picker checks passed. Release Git cleanliness gate was deferred by the unmodified script."
+    }
+  ],
+  "testSummary": {
+    "filesPassed": 43,
+    "filesFailed": 0,
+    "testsTotal": 608,
+    "passed": 607,
+    "failed": 0,
+    "skipped": 1,
+    "skipReason": "Existing Windows-only long-path test in tests/git-unborn.test.ts:253; validation platform is macOS.",
+    "focusedLifecyclePassed": 24
+  },
+  "notValidated": [
+    "0.2.1-rc.2 real browser rendering and interactions",
+    "AI conversation and complete review/preview/delivery/rollback/recovery/cleanup runtime lifecycle",
+    "DSH Profile install or startup",
+    "Desktop and Windows end-to-end behavior",
+    "Release Git cleanliness and publishing"
+  ],
+  "residualRisks": [
+    "Lifecycle compatibility relies on the verified Loader 1.0.6 writable Entry.fiber contract and the 0.2.1-rc.2 registry internal/plugin notification boundary; future upstream changes require review.",
+    "The existing deliberately never-settling official-disable fixture retains both graph rows while proving replacement startup is not blocked. Timeout is not cancellation; no universal no-overlap claim is made for a permanently wedged Loader operation."
+  ],
+  "temporaryDependencies": "Removed after recording validation evidence; source node_modules was not read or copied; pnpm lock/workspace files were not changed."
+}

@@ -10,7 +10,7 @@
 
 | 插件 | Harness | 证据与范围 |
 | --- | --- | --- |
-| `0.8.0` | `0.1.2-rc.1` | 当前开发/构建基线。typecheck、build、30 个测试文件通过（431 passed、2 skipped），含 Session Target、Review、Recovery、Local 写入保护回归。本轮未重做此组合的真实浏览器全流程。 |
+| `0.8.0` | `0.1.2-rc.1` | 当时的开发/构建基线。typecheck、build、30 个测试文件通过（431 passed、2 skipped），含 Session Target、Review、Recovery、Local 写入保护回归。本轮未重做此组合的真实浏览器全流程。 |
 | `0.8.0` | `0.1.5-rc.1` | 用户报告可用；隔离官方 Profile 安装和配置组合成功。Host 的 231 个 DSH 包均为 rc.1；关键动态导入、strict Typert 正常调用/非法输入拒绝通过；以新 Host 包运行的 39 项 Remote、Workspace provider 生命周期和工具表面测试通过。真实 Web 到达首次引导，但本轮未完成引导后的界面与会话端到端验收，故为**部分验证**，不是已知不兼容。 |
 | `0.8.0` | `0.1.5-rc.2`、`0.1.5-alpha.*` | 本轮未验证，不声明兼容或不兼容。 |
 | `0.7.4`、`0.7.5` | `0.1.2-rc.1` | 历史修复针对的组合：分别修复 Workspace/Conversation 启动环和插件启停 provider 协调。见 CHANGELOG；不是本轮对历史版本的重新测试。 |
@@ -46,13 +46,19 @@
 
 **未验收（不声明完整运行时兼容）**：API Key 配置下的真实 AI 对话；Review/预览/交付/回滚/恢复/清理全流程；Windows；npm 安装版 Host（本轮仅源码 runner）；桌面端。插件 peers 精确锁定 `0.2.0-rc.2`：0.1.x Host 不在 0.10.0 目标内，0.1.x 用户继续使用 0.9.x 插件线（其对 0.1.x 的支持记录见上节，不因本节而撤销）。
 
-### 三种版本约束不要混淆
+### 0.2.1-rc.2 源码兼容验证（Unreleased；插件仍 0.10.1）
 
-1. **开发基线**：运行时接口及大多数开发依赖仍以 `0.1.2-rc.1` 为基线；另用两个别名开发依赖固定 alpha/rc.2 的官方 Browser 源码用于构建门禁，不把它们作为发布包的 Host singleton。
-2. **安装声明**：多数 DSH peer 为 `^0.1.2-rc.1`，locale peer 精确接受 `0.1.2-rc.1 || 0.1.7-rc.2`（经两版契约核对，不包含其他预发布版）。按通常的 npm semver 规则，该 caret 不自动包含不同核心版本的 `0.1.5-rc.1` 预发布版。不要把“能运行”说成“peer 已声明支持”。官方 Profile 使用 `autoInstallPeers: false` 并由 Host 提供运行时；Profile 单独执行 peer check 会报告缺失 Host peers，不等于已发生运行时故障。不要为消除警告而在 Profile 内补装另一套 DSH singleton。
-3. **Workspace 派生**：`0.9.3` 的 Client bundle 含 rc.1、alpha.2、rc.2 三个经过版本/SHA-256 门禁的官方来源，只在 Host 包版本命中时注册相应 Browser；源码门禁和 Host 包识别都不是端到端兼容证明。
+当前源码基线已升级至 DSH `0.2.1-rc.2`；这不是发布新插件版本，也不是重新迁移历史组合。全新项目内隔离安装后，typecheck、build、sidebar 版本/SHA 门禁、发布检查均通过；43 个测试文件 **607 passed / 1 skipped**，其中真实 Cordis Loader/Web registry 生命周期 **24 passed**。本轮修复 live disable 后官方 Provider 未恢复及 replacement 激活失败后的双 Provider：显式释放 marker、等待禁用 fiber、通过公开 `entry.init()` 替换已销毁引用，并按身份撤回失败/禁用的 replacement 引用。配置不持久化，启动仍不等待选举，保留超时和在途保护。
 
-只扩展了已核对的 locale 精确版本；Profile `peers check` 仍可报告 Host 提供的多个 peer 缺失，不等于 locale 版本冲突或运行时失败。完整支持声明要等未覆盖的生命周期验收后再定。
+**本轮仅验收源码兼容性**：未启动正式/隔离 DSH Profile，未完成 `0.2.1-rc.2` 浏览器、真实 AI、桌面或 Windows 全流程；旧版本的浏览器证据不可转用为新版本验收。唯一 skipped 是 Windows 专用长路径测试。确切命令、根因和审查入口见 [0.2.1-rc.2 报告](compatibility/0.2.1-rc.2.md)，机器结果见 [JSON](compatibility/0.2.1-rc.2-validation.json)。
+
+### 三种版本约束不要混淆（当前源码）
+
+1. **开发基线**：DSH 开发依赖精确为 `0.2.1-rc.2`；Cordis `4.0.5`、loader `1.0.6`、include `1.0.10`、schemastery `3.18.5`。旧 alpha/next Browser 别名仅用于构建来源门禁，不是私有 Host singleton。
+2. **安装声明**：当前 DSH peers（含 locale）精确为 `0.2.1-rc.2`，Cordis peer 为 `~4.0.5`，loader 为 `~1.0.6`。这是 package.json 的安装声明，不是所有 peer patch 版本的运行时证明。`0.9.3` 历史上的多数 DSH `^0.1.2-rc.1` 与 locale `0.1.2-rc.1 || 0.1.7-rc.2` 不再是当前声明；历史记录仍保留。官方 Profile 由 Host 提供运行时，不能为了消除 peer 警告补装另一套 singleton。
+3. **Workspace 派生**：当前 bundle 来源为 `0.2.1-rc.2`、`0.1.6-alpha.2`、`0.1.7-rc.2`，逐一经过版本/SHA-256 门禁。Host 实际解析的 `dsh-agent` 版本选择单一派生；新 modern 不复用于 `0.2.0`，未知版本保留官方 Provider。保留旧派生不等于当前 peers 支持旧 Host，来源门禁也不是浏览器验收。
+
+历史可用组合不因当前源码升级被撤销；未覆盖的运行时生命周期仍需单独验收。
 
 ### 升级与回退
 
@@ -69,7 +75,7 @@
 
 | Plugin | Harness | Evidence and scope |
 | --- | --- | --- |
-| `0.8.0` | `0.1.2-rc.1` | Development/build baseline. Typecheck, build and 30 test files passed (431 passed, 2 skipped), including Session Target, Review, Recovery and Local write-protection regressions. No fresh browser end-to-end run for this combination in this check. |
+| `0.8.0` | `0.1.2-rc.1` | Development/build baseline at that time. Typecheck, build and 30 test files passed (431 passed, 2 skipped), including Session Target, Review, Recovery and Local write-protection regressions. No fresh browser end-to-end run for this combination in this check. |
 | `0.8.0` | `0.1.5-rc.1` | User-reported working; isolated official Profile installation/configuration, imports and strict Typert checks passed. All 231 installed Host DSH packages were rc.1. 39 focused Remote, Workspace provider lifecycle and tool-surface tests passed with new Host packages. The real Web UI reached onboarding, but post-onboarding UI and Session end-to-end acceptance remain incomplete: **partially verified**, not known incompatible. |
 | `0.8.0` | `0.1.5-rc.2`, `0.1.5-alpha.*` | Not tested in this check; neither compatibility nor incompatibility is claimed. |
 | `0.7.4`, `0.7.5` | `0.1.2-rc.1` | Historical targeted fixes for the Workspace/Conversation boot cycle and provider enable/disable lifecycle respectively; see CHANGELOG. Not newly retested here. |
@@ -105,7 +111,13 @@ Plugin `0.10.0` moves all DSH peers and dev dependencies to `0.2.0-rc.2` (exact)
 
 **Not accepted (no complete runtime compatibility claim)**: real AI conversation with an API key; the full review/preview/delivery/rollback/recovery/cleanup lifecycle; Windows; npm-installed Host (source runner only this round); desktop. Plugin peers are pinned to exact `0.2.0-rc.2`: 0.1.x Hosts are not a 0.10.0 target; 0.1.x users stay on the 0.9.x plugin line (its 0.1.x support records above are unaffected by this section).
 
-**Separate three constraints:** runtime interfaces and most development dependencies retain the reproducible rc.1 baseline, with two aliased build-only official Browser sources pinned to alpha.2 and rc.2; most DSH peers declare `^0.1.2-rc.1` while locale precisely accepts `0.1.2-rc.1 || 0.1.7-rc.2` after contract checks; the `0.9.3` Client bundle embeds three individually version/hash-gated Browser sources and uses the Host-resolved agent package version to select only one. The caret does not normally admit a different-core `0.1.5-rc.1` prerelease. A runtime success is not peer-declared support. Official Profiles disable automatic peer installation and borrow Host runtime packages; never add private Host singletons just to silence a peer warning. Profile `peers check` still reports several Host-provided missing peers; this is not a locale version conflict or proof of runtime failure. Neither a hash gate nor package-version selection proves end-to-end forward compatibility.
+### 0.2.1-rc.2 source compatibility validation (Unreleased; plugin still 0.10.1)
+
+Current source targets DSH `0.2.1-rc.2`; no new plugin release or user-data migration was performed. A fresh project-local isolated install passed typecheck, build, sidebar version/SHA gates, publish checks and all 43 test files: **607 passed / 1 skipped**, including **24 real Cordis Loader/Web registry lifecycle tests**. This round fixes official Provider recovery after live disable and dual Providers after failed replacement activation: explicit marker release, waiting for the disabled fiber, public `entry.init()` for disposed generations, and identity-guarded withdrawal of failed/disposed replacement references. Configuration is not persisted; startup remains non-blocking with timeout/in-flight guards.
+
+**Source compatibility only:** no DSH Profile was started or modified, and no `0.2.1-rc.2` browser, real AI, desktop or Windows end-to-end acceptance was performed. Earlier browser evidence does not accept the new source. The one skipped test is Windows-only long-path coverage. See the [exact commands and review handoff](compatibility/0.2.1-rc.2.md) and [machine-readable results](compatibility/0.2.1-rc.2-validation.json).
+
+**Separate three current constraints:** (1) DSH dev dependencies are exact `0.2.1-rc.2`, with Cordis `4.0.5`, loader `1.0.6`, include `1.0.10` and schemastery `3.18.5`. (2) DSH peers, including locale, are exact `0.2.1-rc.2`; Cordis/loader peers are `~4.0.5` / `~1.0.6`. This does not prove every permitted patch version. The historical `0.9.3` caret/locale constraints above are not the current manifest; never install private Host singletons merely to suppress Profile peer warnings. (3) Current Browser sources are individually version/SHA-gated `0.2.1-rc.2`, `0.1.6-alpha.2` and `0.1.7-rc.2`. Host-resolved agent version selects one derivative; the new modern source is not reused on `0.2.0`, and unknown versions keep the official Provider. Keeping old derivations does not extend current peer support to old Hosts. Neither gate nor package selection proves browser acceptance. Historical working combinations are not withdrawn.
 
 **Migration:** rc.1 of the 0.1.5 line uses Session V3; older Hosts cannot read upgraded logs. Back up the original environment and test with an isolated `DSH_HOME`/repository. Rollback requires original data, not just an older npm package. The 0.1.2-rc.1 line also removed the optional SQLite backend; export old data with the original version first. Record resolved packages rather than the CLI version alone: a caret may resolve a later RC. This run found no rc.2 mixing. Registry tags observed on 2026-09-11 were `latest=0.1.5-rc.1`, `next=0.1.5-rc.2`.
 

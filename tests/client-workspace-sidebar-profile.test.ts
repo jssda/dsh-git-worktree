@@ -3,7 +3,7 @@ import { createElement, type ComponentType } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { resolve } from 'node:path'
 import { describe, expect, test, vi } from 'vitest'
-import { materializeOfficialWorkspaceClientModule } from '../scripts/workspace-sidebar-upstream.mjs'
+import { decorateOfficialWorkspaceClient, readOfficialWorkspaceClient, materializeOfficialWorkspaceClientModule } from '../scripts/workspace-sidebar-upstream.mjs'
 import { decorateNextWorkspaceClient, materializeNextWorkspaceClientModule, readNextWorkspaceClient } from '../scripts/workspace-sidebar-upstream-next.mjs'
 import { decorateAlphaWorkspaceClient, materializeAlphaWorkspaceClientModule, readAlphaWorkspaceClient } from '../scripts/workspace-sidebar-upstream-alpha.mjs'
 import { apply as applyNextWorkspace } from './official-workspace-client-next.mock.js'
@@ -54,7 +54,7 @@ describe('Managed Workspace profile ownership', () => {
       guard.sessionIds = new Set(['managed'])
       const slots = (proxied as unknown as { slots: typeof ctx.slots }).slots
       for (const seat of ['sidebar.workspaces.session.menu.item', 'sidebar.workspaces.session.row.action']) {
-        for (const id of ['pin', 'rename', 'fork', 'archive', 'unknown-action']) {
+        for (const id of ['pin', 'rename', 'fork', 'archive', 'session-id', 'unknown-action']) {
           const Action = ({ sessionId, displayTitle, injectedAction }: ActionProps) =>
             createElement('span', null, `${id}:${sessionId}:${displayTitle}:${injectedAction(sessionId)}`)
           originals.set(`${seat}:${id}`, Action)
@@ -66,7 +66,7 @@ describe('Managed Workspace profile ownership', () => {
       sessionId, displayTitle: '官方标题', injectedAction: id => `injected-${id}`,
     })
     for (const seat of ['sidebar.workspaces.session.menu.item', 'sidebar.workspaces.session.row.action']) {
-      for (const id of ['pin', 'rename', 'archive']) {
+      for (const id of ['pin', 'rename', 'archive', 'session-id']) {
         const Component = registered.get(`${seat}:${id}`)!
         expect(Component).toBe(originals.get(`${seat}:${id}`))
         for (const sessionId of ['managed', 'ordinary']) {
@@ -126,6 +126,20 @@ describe('Managed Workspace profile ownership', () => {
     expect(WORKTREE_STYLES).toContain('var(--dsw-alias-state-success-primary)')
     expect(WORKTREE_STYLES).toContain('var(--dsw-alias-state-error-primary)')
     expect(WORKTREE_STYLES).toContain('var(--dsw-alias-state-business-primary) 68%')
+  })
+
+  test('fails closed on missing or repeated modern mandatory fork seams and preserves upstream options', () => {
+    const original = readOfficialWorkspaceClient().source
+    const seam = 'async forkSession(sessionId, onCreated, options) {'
+    expect(() => decorateOfficialWorkspaceClient(original.replace(seam, 'async brokenFork() {'))).toThrow(/one stable source seam/)
+    const needle = '\t\t\t' + seam + '\n\t\t\t\treturn this.sessions.fork({'
+    expect(() => decorateOfficialWorkspaceClient(original + needle)).toThrow(/one stable source seam/)
+    const derived = decorateOfficialWorkspaceClient(original)
+    expect(derived).toContain('options?.allowMigration === void 0 ? {} : { allowMigration: options.allowMigration }')
+    expect(derived).toContain('const { agentPreset, ...draft } = options ?? {}')
+    expect(derived).toContain('conversation.input.requestDraftInitialization(binding, options)')
+    expect(derived).toContain('id: "session-id"')
+    expect(derived).toContain('writeClipboard)(sessionId)')
   })
 
   test('derives the hash-gated alpha Browser with protected owner rows and independent status', () => {

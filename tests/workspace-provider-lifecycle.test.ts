@@ -3,7 +3,7 @@ import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { afterEach, describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { Group, Loader, type EntryOptions } from '@deepseek-ai/cordis-plugin-loader'
 import Include, { applyEntryPatches, entryListSchema, type PatchOptions } from '@deepseek-ai/cordis-plugin-include'
@@ -168,22 +168,67 @@ describe('Workspace provider lifecycle (real Cordis Loader and Web module regist
     const replacement = [...ctx.loader.entries()].find(entry => entry.options.name === WORKTREE)!
     const official = [...ctx.loader.entries()].find(entry => entry.options.name === OFFICIAL)!
     const original = structuredClone(official.options)
-    for (const disabled of [true, false, true]) {
+    const write = vi.spyOn(official.parent.tree, 'write')
+    let previous = replacement.fiber
+    for (const disabled of [true, false, true, false, true]) {
       await replacement.update({ disabled }, false, true)
       await ctx.loader.await()
       await new Promise(resolve => setTimeout(resolve, 0))
-      expect(graph()).toEqual([disabled ? OFFICIAL : WORKTREE])
+      await vi.waitFor(() => expect(graph()).toEqual([disabled ? OFFICIAL : WORKTREE]))
       expect(official.options).toEqual(original)
+      if (!disabled) {
+        expect(replacement.fiber?.uid).not.toBeNull()
+        expect(replacement.fiber === previous).toBe(false)
+        previous = replacement.fiber
+      }
     }
+    expect(write).not.toHaveBeenCalled()
+  })
+
+  test('restarting a live replacement retains its fiber and elects only its provider', async () => {
+    const { ctx, graph } = await boot(entries(false))
+    const replacement = [...ctx.loader.entries()].find(entry => entry.options.name === WORKTREE)!
+    const fiber = replacement.fiber!
+    await fiber.restart()
+    await ctx.loader.await()
+    await vi.waitFor(() => expect(graph()).toEqual([WORKTREE]))
+    expect(replacement.fiber === fiber).toBe(true)
+    expect(ctx.get('worktreeWorkspaceProvider')).toBe(true)
+  })
+
+  test('old generation cleanup cannot withdraw a concurrently initialized replacement fiber', async () => {
+    const { ctx, graph } = await boot(entries(false))
+    const replacement = [...ctx.loader.entries()].find(entry => entry.options.name === WORKTREE)!
+    const old = replacement.fiber!
+    // Entry disable schedules disposal, clearing uid before effects finish.
+    // Re-enable can install the next generation while old cleanup is pending.
+    // Direct fiber.dispose() on an enabled entry would intentionally persist a
+    // user disable through Loader, so exercise the real entry update path.
+    await replacement.update({ disabled: true }, false, true)
+    const disposed = old.dispose()
+    await replacement.update({ disabled: false }, false, true)
+    const current = replacement.fiber!
+    await disposed
+    await current.await()
+    await ctx.loader.await()
+    await vi.waitFor(() => expect(graph()).toEqual([WORKTREE]))
+    expect(current === old).toBe(false)
+    expect(replacement.fiber === current).toBe(true)
+    expect(ctx.get('worktreeWorkspaceProvider')).toBe(true)
   })
 
   test('failed replacement activation restores the official provider', async () => {
     const { ctx, graph } = await boot(entries(true), false, undefined, undefined, true)
     const replacement = [...ctx.loader.entries()].find(entry => entry.options.name === WORKTREE)!
-    await expect(replacement.update({ disabled: false }, false, true)).rejects.toThrow('fixture: replacement initialization failed')
+    // Loader 1.0.6 update schedules activation; the fiber owns its outcome.
+    await replacement.update({ disabled: false }, false, true)
+    await expect(replacement.fiber!.await()).rejects.toThrow('fixture: replacement initialization failed')
     await ctx.loader.await()
     await new Promise(resolve => setTimeout(resolve, 0))
     expect(graph()).toEqual([OFFICIAL])
+    expect(replacement.fiber).toBeUndefined()
+    expect(replacement.options.disabled).toBe(false)
+    expect(ctx.get('worktreeWorkspaceProvider')).toBeUndefined()
   })
 
   test('explicit user Workspace disabled overrides are not owned by the replacement lifecycle', async () => {
@@ -238,7 +283,9 @@ describe('Workspace provider lifecycle (real Cordis Loader and Web module regist
     expect(graph()).toContain(WORKTREE)
     await new Promise(resolve => setTimeout(resolve, 60))
     const official = [...ctx.loader.entries()].find(entry => entry.options.name === OFFICIAL)!
-    expect(official.fiber).toBeUndefined()
+    // Loader 1.0.6 retains the disposed fiber reference. Assert the public
+    // disposal identity rather than pretty-printing a Cordis Context object.
+    expect(official.fiber?.uid ?? null).toBeNull()
     expect(graph()).toEqual([WORKTREE])
   })
 })

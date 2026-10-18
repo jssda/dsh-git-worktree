@@ -72,13 +72,14 @@ flowchart LR
 ### 环境要求
 
 - Node.js `^22.19.0 || >=24.0.0`
-- DeepSeek Harness：插件按 Host 版本分线——`0.10.0` 面向 DSH `0.2.0-rc.2`（peers 精确锁定；已通过隔离源码 Host 的安装、启动、Worktree 开关与预会话创建真实验证，AI 对话与交付全流程仍待验收）；DSH `0.1.x` 请使用 `0.9.x` 插件线。详见[兼容矩阵与限制](docs/COMPATIBILITY.md#中文)。
+- 当前 Unreleased 源码基线为 DSH `0.2.1-rc.2`（插件版本暂留 `0.10.1`，尚未发布）：新鲜隔离验证的类型、构建、sidebar/发布门禁及 43 个测试文件通过（607 passed / 1 skipped），包含 Provider 禁用/失败恢复修复；仅为源码兼容验证，不是浏览器、AI、桌面或 Windows 全流程验收。见[验证报告](docs/compatibility/0.2.1-rc.2.md)。
+- 已发布历史组合（不因本轮撤销）：插件按 Host 版本分线——`0.10.0` 面向 DSH `0.2.0-rc.2`（peers 精确锁定；已通过隔离源码 Host 的安装、启动、Worktree 开关与预会话创建真实验证，AI 对话与交付全流程仍待验收）；DSH `0.1.x` 请使用 `0.9.x` 插件线。详见[兼容矩阵与限制](docs/COMPATIBILITY.md#中文)。
 - Harness Web Client
 - Git Workspace
 
 从旧 Harness 升级时请先处理 Host 数据迁移：`0.1.2-rc.1` 已移除可选 SQLite Session 后端，旧数据需使用旧版 Harness 导出；Code Mode 已更名为 PTC mode，但现有会话记录仍可读取。应用和本插件统一通过 `dsh` Profile 启动与安装。
 
-从旧版 Harness 升级后，如果 Web 界面提示 **Failed to load plugins**，先确认插件线与 Host 版本匹配：DSH `0.2.x` 使用 `0.10.0`，DSH `0.1.x` 使用 `0.9.3`；再按[兼容矩阵](docs/COMPATIBILITY.md#中文)排查并重启 Harness。历史版本 `0.7.2` 及更早依赖已停止发布的 `dsh-client-runtime`；`0.7.3` 在 rc.1 Web Client 中还可能形成 `conversation` / `uiWorkspace` 循环等待。
+从旧版 Harness 升级后，如果 Web 界面提示 **Failed to load plugins**，先确认插件线与 Host 版本匹配：DSH `0.2.0-rc.2` 使用 `0.10.0`，DSH `0.1.x` 参考 `0.9.x` 历史记录；当前 `0.2.1-rc.2` 适配仍为未发布源码；再按[兼容矩阵](docs/COMPATIBILITY.md#中文)排查并重启 Harness。历史版本 `0.7.2` 及更早依赖已停止发布的 `dsh-client-runtime`；`0.7.3` 在 rc.1 Web Client 中还可能形成 `conversation` / `uiWorkspace` 循环等待。
 
 ```bash
 dsh plugin --profile web add dsh-git-worktree@0.10.0

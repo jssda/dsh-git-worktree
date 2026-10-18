@@ -7,7 +7,8 @@ export function workspaceClientFlavorForAgentVersion(version: string | undefined
   if (version === '0.1.2-rc.1') return 'legacy'
   if (version === '0.1.6-alpha.2') return 'alpha'
   if (version === '0.1.7-rc.2') return 'next'
-  if (version === '0.2.0-rc.2') return 'modern'
+  // The modern derivative is built from this exact source, not the previous 0.2.0 line.
+  if (version === '0.2.1-rc.2') return 'modern'
   return 'unsupported'
 }
 

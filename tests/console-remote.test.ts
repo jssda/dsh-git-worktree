@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 
-import { createRequire } from 'node:module'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { Context } from '@deepseek-ai/cordis'
 import { AgentRegistry, type Agent } from '@deepseek-ai/dsh-agent'
 import { TypertGatewayService } from '@deepseek-ai/dsh-api-gateway'
+import RemoteAccessService from '@deepseek-ai/dsh-api-remote-access'
+import { Peer } from '@deepseek-ai/dsh-client-connection'
 import TypertRegistry from '@deepseek-ai/dsh-typert-registry'
 import { describe, expect, it, vi } from 'vitest'
 import { apply as applyTypertLoader, inject as typertLoaderInject, validateTypertManifest } from '@deepseek-ai/dsh-typert-loader'
@@ -16,24 +17,17 @@ import type { WorktreeConsoleControlPlane } from '../src/console-host/control-pl
 import { createWorktreeConsoleRemoteAdapter } from '../src/client/console-remote/adapter.js'
 import { createWorktreeConsoleAdapterFixture } from './support/worktree-console.js'
 import { currentHostLanguage } from '../src/i18n/host.js'
+import { loadOfficialBrowserClient } from './support/official-client.js'
 
-interface ClientModuleHandoff {
-  factory(require: (specifier: string) => unknown): { apply: (ctx: Context) => void; inject: string[] }
+// Test-only principal kind: no policy is registered, so it must not gain access.
+declare module '@deepseek-ai/dsh-typert-protocol' {
+  interface PrincipalMap {
+    compatibilityTest: { readonly kind: 'compatibilityTest' }
+  }
 }
 
 async function loadRemoteClientModule(): Promise<{ apply: (ctx: Context) => void; inject: string[] }> {
-  let handoff: ClientModuleHandoff | undefined
-  const previousWindow = (globalThis as { window?: unknown }).window
-  ;(globalThis as { window?: unknown }).window = {
-    __ModuleLoader__: { load: (value: ClientModuleHandoff) => { handoff = value } },
-  }
-  try {
-    await import('@deepseek-ai/dsh-api-gateway/client')
-  } finally {
-    ;(globalThis as { window?: unknown }).window = previousWindow
-  }
-  if (handoff === undefined) throw new Error('api-gateway client did not register a ModuleLoader handoff')
-  return handoff.factory(createRequire(import.meta.url))
+  return loadOfficialBrowserClient('@deepseek-ai/dsh-api-gateway')
 }
 
 const METHODS = [
@@ -314,6 +308,7 @@ describe('manual strict Worktree Console Remote contribution', () => {
     await ctx.plugin(TypertRegistry)
     const topology = { ok: true as const, value: { projects: [] } }
     const expectedTopology = { ok: true as const, value: { projects: [], workspaceClientFlavor: 'modern' } }
+    const peer = new Peer(ctx, { principal: { kind: 'owner' } })
     const seenLanguages: string[] = []
     const control = { sidebarTopology: vi.fn(async () => {
       seenLanguages.push(currentHostLanguage())
@@ -323,15 +318,42 @@ describe('manual strict Worktree Console Remote contribution', () => {
     new TypertGatewayService(ctx)
     ctx.typert.register(TYPERT)
 
-    await expect(ctx.typertGateway.invoke({ namespace: 'gitWorktree', method: 'sidebarTopology', args: {} }))
+    await expect(ctx.typertGateway.invoke({ peer, namespace: 'gitWorktree', method: 'sidebarTopology', args: {} }))
       .resolves.toEqual(expectedTopology)
     expect(control.sidebarTopology).toHaveBeenCalledTimes(1)
-    await expect(ctx.typertGateway.invoke({ namespace: 'gitWorktree', method: 'sidebarTopology', args: { locale: 'en' } }))
+    await expect(ctx.typertGateway.invoke({ peer, namespace: 'gitWorktree', method: 'sidebarTopology', args: { locale: 'en' } }))
       .resolves.toEqual(expectedTopology)
     expect(seenLanguages).toEqual(['zh', 'en'])
-    await expect(ctx.typertGateway.invoke({ namespace: 'gitWorktree', method: 'sidebarTopology', args: { locale: 'fr' } }))
+    await expect(ctx.typertGateway.invoke({ peer, namespace: 'gitWorktree', method: 'sidebarTopology', args: { locale: 'fr' } }))
       .rejects.toThrow()
     expect(control.sidebarTopology).toHaveBeenCalledTimes(2)
+  })
+
+  it('denies non-owner topology and agent calls before business dispatch, including unrelated resource grants', async () => {
+    const ctx = new Context()
+    await ctx.plugin(TypertRegistry)
+    const access = new RemoteAccessService(ctx)
+    const control = { sidebarTopology: vi.fn(), current: vi.fn(), discard: vi.fn() } as unknown as WorktreeConsoleControlPlane
+    new WorktreeConsoleService(ctx, control)
+    new TypertGatewayService(ctx)
+    ctx.typert.register(TYPERT)
+    const peer = new Peer(ctx, { principal: { kind: 'compatibilityTest' }, interactions: 'none' })
+    // No plugin sharing policy or global grant is installed. Granting an
+    // unrelated resource must not implicitly authorize this plugin surface.
+    for (const permissive of [false, true]) {
+      const unregister = permissive ? access.registerPolicy('compatibilityTest', { bindings: () => [{ resource: { kind: 'session', id: 'agent-1' }, role: 'editor' }] }) : undefined
+      for (const [method, args] of [
+        ['sidebarTopology', {}],
+        ['current', { agentId: 'agent-1' }],
+      ] as const) {
+        await expect(ctx.typertGateway.invoke({ peer, namespace: 'gitWorktree', method, args }))
+          .rejects.toMatchObject({ code: 'remote-access/denied' })
+      }
+      unregister?.()
+    }
+    expect(control.sidebarTopology).not.toHaveBeenCalled()
+    expect(control.current).not.toHaveBeenCalled()
+    await peer.dispose()
   })
 
   it('registers the Host manifest and resolves the official agent lookup before dispatch', async () => {
@@ -344,6 +366,7 @@ describe('manual strict Worktree Console Remote contribution', () => {
       send: () => undefined, followup: () => undefined,
     } as unknown as Agent
     agents.register(agent)
+    const peer = new Peer(ctx, { principal: { kind: 'owner' } })
     const fixture = createWorktreeConsoleAdapterFixture()
     const expected = await fixture.adapter.current({ sessionId: 'agent-1' })
     const control = {
@@ -356,9 +379,9 @@ describe('manual strict Worktree Console Remote contribution', () => {
     new TypertGatewayService(ctx)
     ctx.typert.register(TYPERT)
 
-    await expect(ctx.typertGateway.invoke({ namespace: 'gitWorktree', method: 'current', args: { agentId: 'agent-1' } }))
+    await expect(ctx.typertGateway.invoke({ peer, namespace: 'gitWorktree', method: 'current', args: { agentId: 'agent-1' } }))
       .resolves.toEqual(expected)
-    await expect(ctx.typertGateway.invoke({ namespace: 'gitWorktree', method: 'current', args: { agentId: 'missing-agent' } }))
+    await expect(ctx.typertGateway.invoke({ peer, namespace: 'gitWorktree', method: 'current', args: { agentId: 'missing-agent' } }))
       .rejects.toThrow('did not resolve the requested identity')
     expect(control.current).toHaveBeenCalledTimes(1)
   })
@@ -384,10 +407,11 @@ describe('manual strict Worktree Console Remote contribution', () => {
     new TypertGatewayService(host)
     host.typert.register(TYPERT)
 
+    const peer = new Peer(host, { principal: { kind: 'owner' } })
     const call = vi.fn(async (_channel: string, endpoint: string, payload: { args: Record<string, unknown> }) => {
       const [namespace, method] = endpoint.split('/') as [string, string]
       try {
-        return { ok: true as const, value: await host.typertGateway.invoke({ namespace, method, args: payload.args }) }
+        return { ok: true as const, value: await host.typertGateway.invoke({ peer, namespace, method, args: payload.args }) }
       } catch (error) {
         return { ok: false as const, error: { code: 'internal', message: String(error), details: {} } }
       }

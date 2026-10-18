@@ -5,8 +5,32 @@ import { createRequire } from 'node:module'
 import { resolve } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import TypertRegistry from '@deepseek-ai/dsh-typert-registry'
-import { describe, expect, test, vi } from 'vitest'
+import { beforeEach, afterEach, describe, expect, test, vi } from 'vitest'
+import { transferableAbortController } from 'node:util'
+
+beforeEach(() => {
+  const abort = transferableAbortController()
+  vi.stubGlobal('AbortController', abort.constructor)
+  vi.stubGlobal('AbortSignal', abort.signal.constructor)
+})
+afterEach(() => vi.unstubAllGlobals())
 import { createWorktreeConsoleAdapterFixture } from './support/worktree-console.js'
+import { loadOfficialBrowserClient } from './support/official-client.js'
+
+function gatewayClient() {
+  const gateway = loadOfficialBrowserClient('@deepseek-ai/dsh-api-gateway')
+  const access = loadOfficialBrowserClient('@deepseek-ai/dsh-api-remote-access', specifier =>
+    specifier === '@deepseek-ai/dsh-api-gateway/client' ? gateway : createRequire(import.meta.url)(specifier))
+  return { gateway, access }
+}
+
+async function mountAccess(ctx: Context, access: { inject: string[]; apply(ctx: Context): void }) {
+  // No owner snapshot or live access stream: official UI answers stay false.
+  const slots = ctx.get('slots') as any
+  slots.registerFactory = () => () => {}
+  await ctx.plugin(access)
+}
+
 
 interface ClientHandoff {
   id: string
@@ -57,6 +81,7 @@ describe('built Client ModuleLoader artifact', () => {
       'remote',
       'layout',
       'shortcuts',
+      'remoteAccess',
     ])
     expect(clientExports.inject).not.toContain('conversation')
     expect(clientExports.inject).not.toContain('connection')
@@ -67,11 +92,7 @@ describe('built Client ModuleLoader artifact', () => {
 
   test('restores uiWorkspace before conversation, then mounts Worktree surfaces and withdraws them with the fiber', async () => {
     const nodeRequire = createRequire(import.meta.url)
-    const gatewayPath = nodeRequire.resolve('@deepseek-ai/dsh-api-gateway/client')
-    const gateway = executeBundle(readFileSync(gatewayPath, 'utf8')).factory(nodeRequire) as {
-      apply(ctx: Context): void
-      inject: string[]
-    }
+    const { gateway, access } = gatewayClient()
     const worktree = executeBundle(readFileSync(resolve('lib/client.js'), 'utf8'))
       .factory(specifier => platformRequire(nodeRequire, specifier)) as {
       apply(ctx: Context): void
@@ -117,6 +138,7 @@ describe('built Client ModuleLoader artifact', () => {
     ctx.provide('layout', { beginNavigation: () => new AbortController().signal } as never)
     ctx.provide('shortcuts', { register: vi.fn(() => () => {}) } as never)
 
+    await mountAccess(ctx, access)
     const fiber = ctx.plugin({ inject: worktree.inject, apply: worktree.apply })
     await fiber
     expect(ctx.worktreeConsole).toBeDefined()
@@ -162,11 +184,7 @@ describe('built Client ModuleLoader artifact', () => {
 
   test('boots a modern Host whose picker provider waits for uiWorkspace, then resolves picker calls lazily', async () => {
     const nodeRequire = createRequire(import.meta.url)
-    const gatewayPath = nodeRequire.resolve('@deepseek-ai/dsh-api-gateway/client')
-    const gateway = executeBundle(readFileSync(gatewayPath, 'utf8')).factory(nodeRequire) as {
-      apply(ctx: Context): void
-      inject: string[]
-    }
+    const { gateway, access } = gatewayClient()
     const worktree = executeBundle(readFileSync(resolve('lib/client.js'), 'utf8'))
       .factory(specifier => platformRequire(nodeRequire, specifier)) as {
       apply(ctx: Context): void
@@ -216,6 +234,7 @@ describe('built Client ModuleLoader artifact', () => {
     ctx.provide('layout', { beginNavigation: () => new AbortController().signal } as never)
     ctx.provide('shortcuts', { register: vi.fn(() => () => {}) } as never)
 
+    await mountAccess(ctx, access)
     const fiber = ctx.plugin({ inject: worktree.inject, apply: worktree.apply })
     await fiber
     // Without the filtered inject this fiber could never settle: the entry

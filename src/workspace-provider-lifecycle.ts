@@ -68,7 +68,12 @@ export function mountWorkspaceProviderLifecycle(
     const label = kind === 'disable' ? 'official Workspace disable' : 'official Workspace restore'
     let operation: Promise<unknown>
     try {
-      operation = kind === 'disable' ? entry.update({}, false, true) : entry.refresh()
+      const fiber = entry.fiber
+      operation = kind === 'disable'
+        ? entry.update({}, false, true).then(() => fiber?.await())
+        // Loader 1.0.6 retains disposed fibers; refresh() treats any reference
+        // as running, whereas init() replaces the dead generation.
+        : fiber?.uid === null ? entry.init() : entry.refresh()
     } catch (error) {
       ctx.logger.warn(`dsh-git-worktree: ${label} threw during Loader reconciliation`, error)
       resolve()
@@ -116,18 +121,35 @@ export function mountWorkspaceProviderLifecycle(
     })
     return pending
   }
+  const releaseMarker = ctx.provide('worktreeWorkspaceProvider', true)
   ctx.effect(() => async () => {
     released = true
+    // Cordis 4.0.5 unloads effects concurrently, not in LIFO order. Explicitly
+    // withdraw the marker before evaluating the official disabled expression.
+    await releaseMarker()
+    // Loader retains failed/disposed fibers and the Web registry only checks
+    // the entry reference, not fiber state. Withdraw this generation alone and
+    // publish the same owning-fiber event the registry consumes on disposal.
+    // A later activation must never be cleared by this generation's cleanup.
+    const withdraw = (): void => {
+      const replacement = ctx.fiber.entry
+      if (replacement?.fiber !== ctx.fiber) return
+      replacement.fiber = undefined
+      ctx.emit('internal/plugin', ctx.fiber)
+    }
+    if (ctx.fiber.uid === null) withdraw()
+    // A restart also unloads effects, but reuses its live fiber. Only withdraw
+    // that reference if activation actually failed, after unload settles.
+    // Do not await our own cleanup from inside this disposer.
+    else void ctx.fiber.await().catch(withdraw)
     // Root/Include teardown owns these entries; do not resurrect that tree.
     if (ctx.root.fiber.uid === null || ctx.root.fiber.state === UNLOADING) return
     await pending.catch(() => {})
     for (const entry of owned()) {
-      if (entry.parent.ctx.fiber.uid !== null && entry.parent.ctx.fiber.state !== UNLOADING && !entry.disabled) await entry.refresh()
+      if (entry.parent.ctx.fiber.uid !== null && entry.parent.ctx.fiber.state !== UNLOADING && !entry.disabled
+        && !inFlight.has(entry.id)) await operate(entry, 'restore')
     }
   })
-  // Registered after the fallback so LIFO teardown releases the selection
-  // before restoring Workspace, including when the replacement apply fails.
-  ctx.provide('worktreeWorkspaceProvider', true)
   // Includes may add the official row after the replacement has activated.
   ctx.on('internal/status', fiber => {
     if (fiber === ctx.fiber && !released) {

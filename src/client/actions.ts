@@ -45,10 +45,10 @@ export interface ClientSessions {
   list: SnapshotStore<{
     current?: string
     ids: string[]
-    byId: Record<string, { cwd?: string; retainedBy?: object } | undefined>
+    byId: Record<string, { cwd?: string; retainedBy?: object; projectionValues?: object } | undefined>
   }>
   /** Creates a catalogued Session identity; newer Hosts require retaining it before borrowing a binding. */
-  create(input: { workspaceId: string; sessionId: string }): Promise<string>
+  create(input: { workspaceId: string; sessionId: string; agentPreset?: string }): Promise<string>
   /** Newer Session Controller retains the target through initial open and the callback's handoff. */
   using?<T>(
     sessionId: string,

@@ -2,9 +2,9 @@ import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 
-export const WORKSPACE_UI_VERSION = '0.2.0-rc.2'
-export const WORKSPACE_LOCALE_VERSION = '0.2.0-rc.2'
-export const WORKSPACE_CLIENT_SHA256 = 'e784543780fb8ac7c38c853afd26b9b1713c6907eec2b07eff37461e07bd3be9'
+export const WORKSPACE_UI_VERSION = '0.2.1-rc.2'
+export const WORKSPACE_LOCALE_VERSION = '0.2.1-rc.2'
+export const WORKSPACE_CLIENT_SHA256 = '52765aacb6c7f96327da5d8709d8cbb30dd2957d4744a42da04c18e07fe264e5'
 export const OFFICIAL_WORKSPACE_VIRTUAL_ID = 'virtual:dsh-official-workspace-client'
 export const RESOLVED_OFFICIAL_WORKSPACE_VIRTUAL_ID = `\0${OFFICIAL_WORKSPACE_VIRTUAL_ID}`
 
@@ -55,8 +55,8 @@ export function decorateOfficialWorkspaceClient(source) {
     '\t\t\t\tsuper(ctx, "uiWorkspace");\n\t\t\t\tthis.managedWorktreeGuard = ctx.get("__dshGitWorktreeManagedGuard");\n\t\t\t\tthis.directoryPicker = directoryPicker;',
     'instance-local managed guard')
   derived = replaceExactlyOnce(derived,
-    '\t\t\tasync forkSession(sessionId, onCreated) {\n\t\t\t\treturn this.sessions.fork({',
-    '\t\t\tasync forkSession(sessionId, onCreated) {\n\t\t\t\tif (this.managedWorktreeGuard.blockSession(sessionId)) throw new Error("managed Session must be changed through its Worktree owner");\n\t\t\t\treturn this.sessions.fork({',
+    '\t\t\tasync forkSession(sessionId, onCreated, options) {\n\t\t\t\treturn this.sessions.fork({',
+    '\t\t\tasync forkSession(sessionId, onCreated, options) {\n\t\t\t\tif (this.managedWorktreeGuard.blockSession(sessionId)) throw new Error("managed Session must be changed through its Worktree owner");\n\t\t\t\treturn this.sessions.fork({',
     'Managed Session fork from menus and shortcuts')
   derived = replaceExactlyOnce(derived,
     '\t\t\t\tconst target = workspaceId ?? currentWorkspaceId ?? recent;\n\t\t\t\tif (target === void 0) {',

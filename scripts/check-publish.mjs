@@ -161,6 +161,7 @@ if (!client || client.platform !== 'web' || !Array.isArray(client.inject) || cli
   fail('package.json must declare dsh.client { platform: "web", inject: [...] }')
 }
 const requiredClientPackages = [
+  '@deepseek-ai/dsh-api-remote-access',
   '@deepseek-ai/dsh-api-session-controller',
   '@deepseek-ai/dsh-api-workspace-controller',
   '@deepseek-ai/dsh-client-ui-conversation',
@@ -216,6 +217,7 @@ try {
 if (!clientExports || typeof clientExports.apply !== 'function' || !Array.isArray(clientExports.inject)) {
   fail('client bundle factory did not return apply + inject')
 }
+if (!clientExports.inject.includes('remoteAccess')) fail('client bundle must inject the official remoteAccess service')
 if (!clientExports.inject.includes('remote')) fail('client bundle must inject the official Remote service before $mount')
 if (clientExports.inject.includes('remote.directoryPicker')) fail('client bundle entry must not wait for the directory-picker Remote: its provider entry waits for uiWorkspace, so requiring it here deadlocks the 0.2.x web boot')
 if (!clientSource.includes("'remote.directoryPicker'") && !clientSource.includes('"remote.directoryPicker"')) fail('client bundle must resolve the directory-picker lazily at call time through the managed context (deferred facade)')

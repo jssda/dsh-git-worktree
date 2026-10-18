@@ -97,6 +97,10 @@ export class PreSessionWorktreeController {
       throw new PreSessionWorktreeError(t('harness.session.navigation.unavailable'))
     }
 
+    // A blank Session can carry an explicitly selected agent preset. Preserve
+    // that selection; when absent, omit it and let the Host choose its default.
+    const projectionValues = this.services.sessions.list.getSnapshot().byId[request.sessionId]?.projectionValues
+    const sourcePreset = (projectionValues as { agentPreset?: unknown } | undefined)?.agentPreset
     const previousBlock = this.services.conversation.blocks.storeFor(request.sessionId).getSnapshot()
     this.services.conversation.blocks.set(request.sessionId, { reason: t("creating.isolated.worktree") })
 
@@ -122,6 +126,7 @@ export class PreSessionWorktreeController {
       actualSessionId = await this.services.sessions.create({
         workspaceId: workspace.workspaceId,
         sessionId: created.targetSessionId,
+        ...(typeof sourcePreset === 'string' ? { agentPreset: sourcePreset } : {}),
       })
       if (actualSessionId !== created.targetSessionId) {
         throw new PreSessionWorktreeError(

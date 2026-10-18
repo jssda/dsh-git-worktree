@@ -4,6 +4,13 @@
 
 ## [Unreleased]
 
+- 适配源码基线至 DSH `0.2.1-rc.2`，精确 DSH peers/dev；Cordis 4.0.5、loader 1.0.6、include 1.0.10、schemastery 3.18.5 及锁文件同步。插件仍为 0.10.1，不代替发布。
+- Workspace 版本/SHA 与 Fork mandatory seam 对齐新源码，保留 allowMigration、agentPreset、官方草稿初始化；新派生不复用于 0.2.0 Host，历史 alpha/next 别名保持。
+- 接入官方 remoteAccess Client 依赖，保持 directoryPicker 惰性防环；Remote 测试使用官方 owner Peer 和真实 browser 条件入口，非 owner 默认拒绝，不添加分享授权策略。
+- 放行已核对的只读 session-id 菜单，Fork/未知动作继续阻断；预会话创建保留已记录的 agentPreset，未记录时使用 Host 默认，保留草稿/附件回归。
+- 修复 Cordis 4.0.5 / Loader 1.0.6 下 Provider 生命周期：显式释放 marker，不依赖并发卸载的顺序；等待禁用 fiber 真正结束，以公开 `entry.init()` 替换已销毁的官方 fiber；按身份撤回失败/禁用的 replacement fiber 并通知 Web registry。保留非阻塞启动、超时/在途保护、不持久化配置和根卸载不复活；补充同 fiber 重启及多轮启停回归。
+- 新鲜隔离验证：typecheck/build/sidebar/发布门禁全部通过；43 文件共 607 passed、1 skipped，focused lifecycle 24 passed。NOTICE/LICENSE 材料齐全，未跳过发布检查。仅为源码兼容验证，未验收真实浏览器、AI、桌面或 Windows 全流程；插件仍为 0.10.1 未发布。详见 [报告](docs/compatibility/0.2.1-rc.2.md)。
+
 ## [0.10.1] - 2026-10-07
 
 `0.10.1` 恢复托管会话被过度屏蔽的官方侧边栏操作，收敛行内状态展示，并让验收详情的长列表默认折叠；是无数据迁移的补丁版。
