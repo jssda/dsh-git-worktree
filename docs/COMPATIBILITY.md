@@ -46,11 +46,13 @@
 
 **未验收（不声明完整运行时兼容）**：API Key 配置下的真实 AI 对话；Review/预览/交付/回滚/恢复/清理全流程；Windows；npm 安装版 Host（本轮仅源码 runner）；桌面端。插件 peers 精确锁定 `0.2.0-rc.2`：0.1.x Host 不在 0.10.0 目标内，0.1.x 用户继续使用 0.9.x 插件线（其对 0.1.x 的支持记录见上节，不因本节而撤销）。
 
-### 0.2.1-rc.2 源码兼容验证（Unreleased；插件仍 0.10.1）
+### 0.2.1-rc.2 适配（插件 0.11.0；发布前源码兼容验证）
 
-当前源码基线已升级至 DSH `0.2.1-rc.2`；这不是发布新插件版本，也不是重新迁移历史组合。全新项目内隔离安装后，typecheck、build、sidebar 版本/SHA 门禁、发布检查均通过；43 个测试文件 **607 passed / 1 skipped**，其中真实 Cordis Loader/Web registry 生命周期 **24 passed**。本轮修复 live disable 后官方 Provider 未恢复及 replacement 激活失败后的双 Provider：显式释放 marker、等待禁用 fiber、通过公开 `entry.init()` 替换已销毁引用，并按身份撤回失败/禁用的 replacement 引用。配置不持久化，启动仍不等待选举，保留超时和在途保护。
+插件 `0.11.0` 已发布到 npm，DSH peers 与开发依赖精确锁定 `0.2.1-rc.2`。该版本不需要 Worktree registry、Review 或 Recovery 数据迁移；历史组合的支持记录不变。
 
-**本轮仅验收源码兼容性**：未启动正式/隔离 DSH Profile，未完成 `0.2.1-rc.2` 浏览器、真实 AI、桌面或 Windows 全流程；旧版本的浏览器证据不可转用为新版本验收。唯一 skipped 是 Windows 专用长路径测试。确切命令、根因和审查入口见 [0.2.1-rc.2 报告](compatibility/0.2.1-rc.2.md)，机器结果见 [JSON](compatibility/0.2.1-rc.2-validation.json)。
+以下为发布前、包版本仍为 `0.10.1` 时的源码兼容验证记录，不代表对最终 `0.11.0` 发布包重新进行了测试或全流程验收。全新项目内隔离安装后，typecheck、build、sidebar 版本/SHA 门禁、发布检查均通过；43 个测试文件 **607 passed / 1 skipped**，其中真实 Cordis Loader/Web registry 生命周期 **24 passed**。本轮修复 live disable 后官方 Provider 未恢复及 replacement 激活失败后的双 Provider：显式释放 marker、等待禁用 fiber、通过公开 `entry.init()` 替换已销毁引用，并按身份撤回失败/禁用的 replacement 引用。配置不持久化，启动仍不等待选举，保留超时和在途保护。
+
+**该验证仅覆盖源码兼容性**：验证期间未启动正式/隔离 DSH Profile，未完成 `0.2.1-rc.2` 浏览器、真实 AI、桌面或 Windows 全流程；旧版本的浏览器证据不可转用为新版本验收。唯一 skipped 是 Windows 专用长路径测试。确切命令、根因和审查入口见 [0.2.1-rc.2 报告](compatibility/0.2.1-rc.2.md)，机器结果见 [JSON](compatibility/0.2.1-rc.2-validation.json)。
 
 ### 三种版本约束不要混淆（当前源码）
 
@@ -111,11 +113,13 @@ Plugin `0.10.0` moves all DSH peers and dev dependencies to `0.2.0-rc.2` (exact)
 
 **Not accepted (no complete runtime compatibility claim)**: real AI conversation with an API key; the full review/preview/delivery/rollback/recovery/cleanup lifecycle; Windows; npm-installed Host (source runner only this round); desktop. Plugin peers are pinned to exact `0.2.0-rc.2`: 0.1.x Hosts are not a 0.10.0 target; 0.1.x users stay on the 0.9.x plugin line (its 0.1.x support records above are unaffected by this section).
 
-### 0.2.1-rc.2 source compatibility validation (Unreleased; plugin still 0.10.1)
+### 0.2.1-rc.2 adaptation (plugin 0.11.0; pre-release source compatibility validation)
 
-Current source targets DSH `0.2.1-rc.2`; no new plugin release or user-data migration was performed. A fresh project-local isolated install passed typecheck, build, sidebar version/SHA gates, publish checks and all 43 test files: **607 passed / 1 skipped**, including **24 real Cordis Loader/Web registry lifecycle tests**. This round fixes official Provider recovery after live disable and dual Providers after failed replacement activation: explicit marker release, waiting for the disabled fiber, public `entry.init()` for disposed generations, and identity-guarded withdrawal of failed/disposed replacement references. Configuration is not persisted; startup remains non-blocking with timeout/in-flight guards.
+Plugin `0.11.0` is published on npm, with DSH peers and dev dependencies pinned to exact `0.2.1-rc.2`. No Worktree registry, Review or Recovery data migration is required; historical compatibility records are unchanged.
 
-**Source compatibility only:** no DSH Profile was started or modified, and no `0.2.1-rc.2` browser, real AI, desktop or Windows end-to-end acceptance was performed. Earlier browser evidence does not accept the new source. The one skipped test is Windows-only long-path coverage. See the [exact commands and review handoff](compatibility/0.2.1-rc.2.md) and [machine-readable results](compatibility/0.2.1-rc.2-validation.json).
+The following records pre-release source compatibility validation while the package version was still `0.10.1`, not a new test run or full end-to-end acceptance of the final `0.11.0` published package. A fresh project-local isolated install passed typecheck, build, sidebar version/SHA gates, publish checks and all 43 test files: **607 passed / 1 skipped**, including **24 real Cordis Loader/Web registry lifecycle tests**. This round fixes official Provider recovery after live disable and dual Providers after failed replacement activation: explicit marker release, waiting for the disabled fiber, public `entry.init()` for disposed generations, and identity-guarded withdrawal of failed/disposed replacement references. Configuration is not persisted; startup remains non-blocking with timeout/in-flight guards.
+
+**Source compatibility only:** during that validation, no DSH Profile was started or modified, and no `0.2.1-rc.2` browser, real AI, desktop or Windows end-to-end acceptance was performed. Earlier browser evidence does not accept the new source. The one skipped test is Windows-only long-path coverage. See the [exact commands and review handoff](compatibility/0.2.1-rc.2.md) and [machine-readable results](compatibility/0.2.1-rc.2-validation.json).
 
 **Separate three current constraints:** (1) DSH dev dependencies are exact `0.2.1-rc.2`, with Cordis `4.0.5`, loader `1.0.6`, include `1.0.10` and schemastery `3.18.5`. (2) DSH peers, including locale, are exact `0.2.1-rc.2`; Cordis/loader peers are `~4.0.5` / `~1.0.6`. This does not prove every permitted patch version. The historical `0.9.3` caret/locale constraints above are not the current manifest; never install private Host singletons merely to suppress Profile peer warnings. (3) Current Browser sources are individually version/SHA-gated `0.2.1-rc.2`, `0.1.6-alpha.2` and `0.1.7-rc.2`. Host-resolved agent version selects one derivative; the new modern source is not reused on `0.2.0`, and unknown versions keep the official Provider. Keeping old derivations does not extend current peer support to old Hosts. Neither gate nor package selection proves browser acceptance. Historical working combinations are not withdrawn.
 

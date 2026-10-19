@@ -7,7 +7,7 @@
 
 **Let agents complete tasks in independent Git Worktrees, then review the changes before deciding whether to save them.**
 
-`dsh-git-worktree` is a Git Worktree plugin for [DeepSeek Harness](https://github.com/deepseek-ai/DeepSeek-Harness). It creates a separate Worktree (working directory) for every coding task, so the agent does not directly edit the project you are using. When the task is complete, you can preview the result and then save it, send it back for changes, or discard it.
+`dsh-git-worktree` is a Git Worktree plugin for [DeepSeek Harness](https://github.com/deepseek-ai/DeepSeek-Harness). It creates a separate Worktree (working directory) for each isolated task, where the agent edits and tests code. The plugin writes task changes back to the current project only when you start a preview or confirm saving. When the task is complete, you can preview the result and then save it, send it back for changes, or discard it.
 
 This Git Worktree workflow originated in [Domi](https://github.com/restflux/domi), an open-source desktop coding workbench powered by the Pi Agent Runtime. This plugin is independently adapted for DeepSeek Harness and can be installed and used on its own.
 
@@ -18,7 +18,7 @@ This Git Worktree workflow originated in [Domi](https://github.com/restflux/domi
 When an agent edits the current project directly, its changes can mix with your unfinished work. Running multiple tasks at once can also make them interfere with one another. With this plugin:
 
 - every task is edited and tested in its own Git Worktree (an independent working directory);
-- multiple tasks can run at the same time without sharing one working directory;
+- multiple isolated tasks can develop in parallel in separate working directories; only one task per project can enter the review write-back flow at a time;
 - when the agent finishes, you can temporarily show the changes in the current project and inspect them;
 - changes are saved only after confirmation, and conflicts never overwrite your work automatically.
 
@@ -72,38 +72,43 @@ See the [full usage guide](docs/USAGE.en.md) for detailed actions, recovery scen
 ### Requirements
 
 - Node.js `^22.19.0 || >=24.0.0`
-- Current Unreleased source targets DSH `0.2.1-rc.2` (plugin version remains `0.10.1`; not released). Fresh isolated typecheck, build, sidebar/publish gates and all 43 test files pass (607 passed / 1 skipped), including Provider disable/failure recovery fixes. This is source compatibility validation, not browser, AI, desktop or Windows end-to-end acceptance. See the [validation report](docs/compatibility/0.2.1-rc.2.md).
-- Published historical combinations (not withdrawn by this work): this plugin follows Host version lines — `0.10.0` targets DSH `0.2.0-rc.2` (exact peer pins; verified against an isolated source Host for install, boot, the Worktree switch and pre-session creation, while AI conversation and the delivery lifecycle remain pending acceptance). For DSH `0.1.x`, stay on the `0.9.x` plugin line. See the [compatibility matrix and limitations](docs/COMPATIBILITY.md#english).
-- Harness Web Client
+- DeepSeek Harness Web Client
 - A Git Workspace
+- A plugin version matching your Harness version, as listed below
 
-Before upgrading an existing Harness installation, handle Host data migration: `0.1.2-rc.1` removes the optional SQLite Session backend, so use an older Harness version to export that data first. Code Mode is now named PTC mode, while existing conversation records remain readable. Launch applications and install this plugin through a `dsh` Profile.
+### Choose a version
 
-After upgrading Harness from an earlier release, if the web UI shows **Failed to load plugins**, first match the plugin line to your Host: DSH `0.2.0-rc.2` uses `0.10.0`; DSH `0.1.x` follows the historical `0.9.x` records; the current `0.2.1-rc.2` adaptation is still unreleased source; then check the [compatibility matrix](docs/COMPATIBILITY.md#english) and restart Harness. Releases through `0.7.2` depend on the discontinued `dsh-client-runtime`; `0.7.3` can also form a `conversation` / `uiWorkspace` activation cycle in the rc.1 Web Client.
+| DeepSeek Harness | Plugin version |
+| --- | --- |
+| `0.2.1-rc.2` | `0.11.0` |
+| `0.2.0-rc.2` | `0.10.0` |
+| `0.1.x` | See the historical `0.9.x` compatibility records; not every `0.1.x` version has been verified |
 
-```bash
-dsh plugin --profile web add dsh-git-worktree@0.10.0
-```
+Match the plugin version to your Harness version rather than installing the latest plugin on an older Harness.
+
+The DSH `0.2.1-rc.2` adaptation included in `0.11.0` passed pre-release source compatibility checks. Browser, real AI conversation, desktop and Windows end-to-end acceptance for this combination remain incomplete. See the [compatibility notes](docs/COMPATIBILITY.md#english) and [validation report](docs/compatibility/0.2.1-rc.2.md) for the scope. Historical validation records remain valid for their original combinations, not as acceptance evidence for newer ones.
 
 ### Install
 
-```bash
-dsh plugin --profile web add dsh-git-worktree
-```
-
-Or install a specific version:
+For DSH `0.2.1-rc.2`, install through the `dsh` Web Profile:
 
 ```bash
-dsh plugin --profile web add github:wloops/dsh-git-worktree#v0.10.0
+dsh plugin --profile web add dsh-git-worktree@0.11.0
 ```
 
-> A freshly published release may be skipped by Harness's supply-chain guard (`minimumReleaseAge`), which falls back to the previous release and reports incompatibility with the current DSH. Install the exact version explicitly (e.g. `dsh plugin --profile web add dsh-git-worktree@0.10.0`) or retry after the guard window passes.
+For other Harness versions, choose the matching plugin version from the table above first.
 
-Open a Git Workspace and enable **Worktree** when creating a Session. An existing Local Session can also let the model call `worktree_create`.
+Open a Git Workspace and enable **Worktree** when creating a Session. An existing Local Session can also let the agent call `worktree_create` to create a separate isolated Session.
 
-For the first run, complete one full create → Preview changes → Confirm and save → cleanup cycle.
+For the first run, complete one full create → Preview changes → Confirm and save → clean up the Worktree cycle.
 
-If pnpm build approval blocks a Git-source install, or you need complete commands and troubleshooting, see [Installation and troubleshooting](docs/USAGE.en.md#installation-and-troubleshooting).
+### Upgrades and troubleshooting
+
+- Back up your data and check version compatibility before upgrading Harness. See the [compatibility notes](docs/COMPATIBILITY.md#english) for legacy data migration requirements.
+- If the UI shows **Failed to load plugins**, first check that the plugin and Harness versions match, then follow the troubleshooting guide.
+- Harness's supply-chain guard (`minimumReleaseAge`) may skip a freshly published release and fall back to an older one. Specify the matching exact version explicitly or retry after the guard window passes.
+
+For Git-source installation, pnpm build approval and other troubleshooting steps, see [Installation and troubleshooting](docs/USAGE.en.md#installation-and-troubleshooting).
 
 ## Screenshots
 

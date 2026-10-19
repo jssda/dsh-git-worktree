@@ -7,7 +7,7 @@
 
 **让 Agent 在独立 Git Worktree 中完成任务，你看过修改后再决定是否保存。**
 
-`dsh-git-worktree` 是 [DeepSeek Harness](https://github.com/deepseek-ai/DeepSeek-Harness) 的 Git Worktree 插件。它会为每个编码任务创建独立的 Worktree（工作目录），Agent 不会直接改动你正在使用的项目。任务完成后，你可以先预览结果，再选择保存、退回修改或放弃。
+`dsh-git-worktree` 是 [DeepSeek Harness](https://github.com/deepseek-ai/DeepSeek-Harness) 的 Git Worktree 插件。它为隔离任务创建独立的 Worktree（工作目录），Agent 的代码修改和测试在其中进行；只有你发起预览或确认保存时，插件才会把任务改动写回当前项目。任务完成后，你可以先预览结果，再选择保存、退回修改或放弃。
 
 这套 Git Worktree 工作方式最初来自基于 Pi Agent Runtime 的开源桌面 coding 工作台 [Domi](https://github.com/restflux/domi)，本插件是针对 DeepSeek Harness 独立适配的版本，可以单独安装和使用。
 
@@ -18,7 +18,7 @@
 让 Agent 直接修改当前项目时，它的改动可能与你尚未提交的内容混在一起；同时运行多个任务时，也更容易互相影响。使用本插件后：
 
 - 每个任务都在自己的 Git Worktree（独立工作目录）中修改和测试；
-- 多个任务可以同时进行，不会共用同一个工作目录；
+- 多个隔离任务可以同时开发，各自使用独立工作目录；同一项目一次只允许一个任务进入验收写回流程；
 - Agent 完成后，你可以先把修改临时显示在当前项目中查看；
 - 只有确认后才会保存本轮修改，遇到冲突时不会自动覆盖你的内容。
 
@@ -72,38 +72,43 @@ flowchart LR
 ### 环境要求
 
 - Node.js `^22.19.0 || >=24.0.0`
-- 当前 Unreleased 源码基线为 DSH `0.2.1-rc.2`（插件版本暂留 `0.10.1`，尚未发布）：新鲜隔离验证的类型、构建、sidebar/发布门禁及 43 个测试文件通过（607 passed / 1 skipped），包含 Provider 禁用/失败恢复修复；仅为源码兼容验证，不是浏览器、AI、桌面或 Windows 全流程验收。见[验证报告](docs/compatibility/0.2.1-rc.2.md)。
-- 已发布历史组合（不因本轮撤销）：插件按 Host 版本分线——`0.10.0` 面向 DSH `0.2.0-rc.2`（peers 精确锁定；已通过隔离源码 Host 的安装、启动、Worktree 开关与预会话创建真实验证，AI 对话与交付全流程仍待验收）；DSH `0.1.x` 请使用 `0.9.x` 插件线。详见[兼容矩阵与限制](docs/COMPATIBILITY.md#中文)。
-- Harness Web Client
+- DeepSeek Harness Web Client
 - Git Workspace
+- 与 Harness 版本匹配的插件版本，见下表
 
-从旧 Harness 升级时请先处理 Host 数据迁移：`0.1.2-rc.1` 已移除可选 SQLite Session 后端，旧数据需使用旧版 Harness 导出；Code Mode 已更名为 PTC mode，但现有会话记录仍可读取。应用和本插件统一通过 `dsh` Profile 启动与安装。
+### 版本选择
 
-从旧版 Harness 升级后，如果 Web 界面提示 **Failed to load plugins**，先确认插件线与 Host 版本匹配：DSH `0.2.0-rc.2` 使用 `0.10.0`，DSH `0.1.x` 参考 `0.9.x` 历史记录；当前 `0.2.1-rc.2` 适配仍为未发布源码；再按[兼容矩阵](docs/COMPATIBILITY.md#中文)排查并重启 Harness。历史版本 `0.7.2` 及更早依赖已停止发布的 `dsh-client-runtime`；`0.7.3` 在 rc.1 Web Client 中还可能形成 `conversation` / `uiWorkspace` 循环等待。
+| DeepSeek Harness | 插件版本 |
+| --- | --- |
+| `0.2.1-rc.2` | `0.11.0` |
+| `0.2.0-rc.2` | `0.10.0` |
+| `0.1.x` | 请参考 `0.9.x` 的历史兼容记录，不代表所有 `0.1.x` 版本均已验证 |
 
-```bash
-dsh plugin --profile web add dsh-git-worktree@0.10.0
-```
+插件版本与 Harness 版本需要匹配，不建议在旧版 Harness 上直接安装最新版插件。
+
+`0.11.0` 对应的 DSH `0.2.1-rc.2` 适配已通过发布前源码兼容检查，但尚未完成该组合的浏览器、真实 AI 对话、桌面端和 Windows 全流程验收。详细验证范围见[兼容性说明](docs/COMPATIBILITY.md#中文)与[验证报告](docs/compatibility/0.2.1-rc.2.md)；旧组合的验证记录仍保留，不自动转为新组合的验收证据。
 
 ### 安装
 
-```bash
-dsh plugin --profile web add dsh-git-worktree
-```
-
-也可以安装指定版本：
+以下命令适用于 DSH `0.2.1-rc.2`，通过 `dsh` 的 Web Profile 安装：
 
 ```bash
-dsh plugin --profile web add github:wloops/dsh-git-worktree#v0.10.0
+dsh plugin --profile web add dsh-git-worktree@0.11.0
 ```
 
-> 刚发布的新版本可能被 Harness 的供应链防护（`minimumReleaseAge`）暂时跳过而回退旧版，安装时报「与当前 DSH 不兼容」；此时请显式指定精确版本（如 `dsh plugin --profile web add dsh-git-worktree@0.10.0`），或待防护窗口过后重试。
+如果使用其他 Harness 版本，请先按上表选择匹配的插件版本。
 
-安装后打开 Git Workspace，在新建 Session 时启用 **Worktree**；已有 Local Session 也可以让模型调用 `worktree_create` 创建隔离 Session。
+安装后打开 Git Workspace，在新建 Session 时启用 **Worktree**；已有 Local Session 也可以让 Agent 调用 `worktree_create` 创建独立的隔离 Session。
 
-第一次使用建议先完成一次“创建 → 预览修改 → 确认并保存 → cleanup”的完整流程。
+第一次使用建议先完成一次“创建 → 预览修改 → 确认并保存 → 清理 Worktree”的完整流程。
 
-如果 Git 源安装被 pnpm build approval 阻止，或需要查看完整命令和排错步骤，请阅读[安装与使用指南](docs/USAGE.md#安装与排错)。
+### 升级与排错
+
+- 升级 Harness 前，请先备份数据并检查版本兼容性；旧版数据迁移要求见[升级与回退](docs/COMPATIBILITY.md#升级与回退)。
+- 出现 **Failed to load plugins** 时，先确认插件与 Harness 版本匹配，再按使用指南排查。
+- 刚发布的版本可能被 Harness 的供应链防护（`minimumReleaseAge`）暂时跳过而回退旧版；可显式指定匹配的精确版本，或待防护窗口过后重试。
+
+Git 源安装方式、pnpm build approval 及其他排错步骤见[安装与排错](docs/USAGE.md#安装与排错)。
 
 ## 界面预览
 
